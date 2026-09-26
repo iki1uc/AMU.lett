@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMIGA · CRACKTRO · iki1uc</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;cursor:none}
+  canvas{display:block;position:fixed;inset:0}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<script>
+(function(){
+'use strict';
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H, cx, cy;
+
+function resize(){
+  const dpr = Math.min(devicePixelRatio, 2);
+  W = cv.width  = innerWidth  * dpr;
+  H = cv.height = innerHeight * dpr;
+  cv.style.width  = innerWidth  + 'px';
+  cv.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  cx = innerWidth / 2;
+  cy = innerHeight / 2;
+}
+addEventListener('resize', resize);
+resize();
+
+/* ─── PLASMA ───────────────────────────────────── */
+const PW = 120, PH = 68;
+const pCv = document.createElement('canvas');
+pCv.width = PW; pCv.height = PH;
+const pCtx = pCv.getContext('2d');
+const pImg = pCtx.createImageData(PW, PH);
+const pDat = pImg.data;
+
+/* ─── BOING BALL · schachbrett ─────────────────── */
+const BS = 48;
+const ballCv = document.createElement('canvas');
+ballCv.width = ballCv.height = BS;
+const bCtx = ballCv.getContext('2d');
+/* rot/weiß schachbrett, kugelig durch kreis-maske */
+for(let y=0;y<BS;y++)for(let x=0;x<BS;x++){
+  const dx = x - BS/2, dy = y - BS/2;
+  const d = Math.sqrt(dx*dx+dy*dy);
+  if(d > BS/2){ continue; }
+  /* kugel-schattierung */
+  const kugel = Math.max(0, 1 - d/(BS/2));
+  const schach = ((Math.floor(x/8)+Math.floor(y/8))%2) ? 0 : 1;
+  let r,g,b;
+  if(schach){
+    r = 220 + kugel*35; g = 40 + kugel*20; b = 40 + kugel*20;
+  } else {
+    r = 230 + kugel*25; g = 230 + kugel*25; b = 220 + kugel*35;
+  }
+  /* rand abdunkeln */
+  const rr = Math.floor(r * (0.4 + kugel*0.7));
+  const gg = Math.floor(g * (0.4 + kugel*0.7));
+  const bb = Math.floor(b * (0.4 + kugel*0.7));
+  bCtx.fillStyle = `rgb(${rr},${gg},${bb})`;
+  bCtx.fillRect(x,y,1,1);
+}
+
+/* ─── BALL ZUSTAND ─────────────────────────────── */
+const ball = {
+  x: 100, y: 100,
+  vx: 3.4, vy: 2.6,
+  r: 46,
+  rot: 0,
+  scale: 1,
+  squash: 1,
+};
+
+/* ─── SCROLLER TEXT ────────────────────────────── */
+const TEXT =
+  "   AMIGA SCENE FOREVER ······ " +
+  "GRÜSSE AN · KADER · NOAH · CALL.ME · AMU.LETT · SPRUNG · " +
+  "LIVE-BRIDGE · MEMORY · INBOOT · BANKA · RAWATOR · SLI.RAW · " +
+  "SEEU · ICYFIRE · FLOW · HDF ······ " +
+  "14 KÖRPER · 250 MS TAKT · UPG VOR UPD VOR REV ······ " +
+  "iki1uc 2026 ··· schön dass du da bist ······  ";
+let scrollX = 0;
+
+/* ─── COPPER BARS ──────────────────────────────── */
+const bars = [
+  { y: 0.00, s: 0.08, colors:['rgba(0,0,0,0)','#ff6600','#ffcc00','#ffffff','#ffcc00','#ff6600','rgba(0,0,0,0)'] },
+  { y: 0.92, s:-0.11, colors:['rgba(0,0,0,0)','#0066ff','#00ccff','#ffffff','#00ccff','#0066ff','rgba(0,0,0,0)'] },
+];
+
+/* ─── STERNE ───────────────────────────────────── */
+const stars = [];
+for(let i=0;i<180;i++){
+  stars.push({
+    x: Math.random(),
+    y: Math.random(),
+    z: Math.random()*0.8+0.2,
+    p: Math.random()*Math.PI*2,
+  });
+}
+
+/* ─── ZWEI VÖGEL · die Überraschung ─────────────── */
+/* sie fliegen nicht immer. nur wenn sie wollen.   */
+const vogel = {
+  a: { x: -50, y: 0,  vx: 0, phase: 0, aktiv: false, richtung: 1, farbe: '#8cf0d0', flügel: 0 },
+  b: { x: -80, y: 0,  vx: 0, phase: 0, aktiv: false, richtung: 1, farbe: '#b388ff', flügel: 0 },
+  timer: 0,
+  nächster: 18,   /* sekunden bis zum nächsten flug */
+};
+
+function starteVögel(){
+  vogel.a.aktiv = true;
+  vogel.b.aktiv = true;
+  vogel.a.richtung = 1;
+  vogel.b.richtung = 1;
+  vogel.a.x = -60;
+  vogel.b.x = -140;
+  vogel.a.y = H * 0.22 + Math.random() * H * 0.15;
+  vogel.b.y = vogel.a.y + 26 + Math.random() * 20;
+  vogel.a.vx = 1.6 + Math.random() * 0.6;
+  vogel.b.vx = vogel.a.vx * 0.94;
+}
+
+function zeichneVogel(v, t){
+  if(!v.aktiv) return;
+  const flap = Math.sin(t * 9 + v.phase) * 4;
+  ctx.save();
+  ctx.translate(v.x, v.y);
+  ctx.scale(v.richtung, 1);
+  ctx.strokeStyle = v.farbe;
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = v.farbe;
+  ctx.shadowBlur = 8;
+  /* flügel · V form */
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(-2, -flap);
+  ctx.lineTo( 2, 0);
+  ctx.lineTo( 6, -flap);
+  ctx.stroke();
+  /* kleiner körper-punkt */
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = v.farbe;
+  ctx.beginPath();
+  ctx.arc(0, 0.5, 1.2, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function updateVögel(dt){
+  vogel.timer += dt;
+  /* nächster flug */
+  if(!vogel.a.aktiv && vogel.timer > vogel.nächster){
+    starteVögel();
+    vogel.timer = 0;
+    vogel.nächster = 22 + Math.random() * 30;
+  }
+  if(vogel.a.aktiv){
+    vogel.a.x += vogel.a.vx * dt * 60;
+    vogel.b.x += vogel.b.vx * dt * 60;
+    /* sanfter wellenflug */
+    vogel.a.y += Math.sin(t * 1.4 + vogel.a.phase) * 0.3;
+    vogel.b.y += Math.sin(t * 1.6 + vogel.b.phase + 1.3) * 0.3;
+    /* links raus? rechts rein */
+    if(vogel.b.x > innerWidth + 80){
+      vogel.a.aktiv = false;
+      vogel.b.aktiv = false;
+    }
+  }
+}
+
+/* ─── SCANLINES ────────────────────────────────── */
+let scanOff = 0;
+
+/* ─── LOOP ─────────────────────────────────────── */
+let t = 0, last = performance.now();
+
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last)/1000);
+  last = now;
+  t += dt;
+
+  /* ─── 1 · PLASMA ──────────────────────────── */
+  for(let y=0;y<PH;y++)for(let x=0;x<PW;x++){
+    const v =
+      Math.sin(x*0.06 + t*0.9) +
+      Math.sin(y*0.08 + t*1.1) +
+      Math.sin((x+y)*0.05 + t*1.4) +
+      Math.sin(Math.sqrt(x*x+y*y)*0.07 + t*0.6);
+    const n = (v+4)/8;
+    const i = (y*PW+x)*4;
+    pDat[i]   = Math.floor(10 + n*28);
+    pDat[i+1] = Math.floor(10 + n*32);
+    pDat[i+2] = Math.floor(30 + n*60);
+    pDat[i+3] = 255;
+  }
+  pCtx.putImageData(pImg,0,0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pCv, 0, 0, innerWidth, innerHeight);
+  ctx.imageSmoothingEnabled = true;
+
+  /* ─── 2 · STERNE ──────────────────────────── */
+  for(const s of stars){
+    const a = 0.3 + 0.7 * Math.abs(Math.sin(t*0.5 + s.p));
+    ctx.fillStyle = `rgba(180,220,255,${a * s.z})`;
+    ctx.fillRect(s.x * innerWidth, s.y * innerHeight, s.z*1.6, s.z*1.6);
+  }
+
+  /* ─── 3 · BOING BALL ──────────────────────── */
+  /* bewegung */
+  ball.x += ball.vx * dt * 60;
+  ball.y += ball.vy * dt * 60;
+  ball.rot += ball.vx * 0.03;
+  /* wände */
+  if(ball.x - ball.r < 0){ ball.x = ball.r; ball.vx = Math.abs(ball.vx); }
+  if(ball.x + ball.r > innerWidth){ ball.x = innerWidth - ball.r; ball.vx = -Math.abs(ball.vx); }
+  if(ball.y - ball.r < 0){ ball.y = ball.r; ball.vy = Math.abs(ball.vy); ball.squash = 0.85; }
+  if(ball.y + ball.r > innerHeight){
+    ball.y = innerHeight - ball.r;
+    ball.vy = -Math.abs(ball.vy) * 0.995;
+    ball.squash = 0.82;
+  }
+  /* squash erholen */
+  ball.squash += (1 - ball.squash) * 0.15;
+
+  ctx.save();
+  ctx.translate(ball.x, ball.y);
+  ctx.rotate(ball.rot);
+  /* squash wirkt nur auf y */
+  ctx.scale(1, 1 / ball.squash);
+  ctx.drawImage(ballCv, -ball.r, -ball.r, ball.r*2, ball.r*2);
+  ctx.restore();
+
+  /* ─── 4 · VÖGEL · die Überraschung ────────── */
+  updateVögel(dt);
+  zeichneVogel(vogel.a, t);
+  zeichneVogel(vogel.b, t + 0.4);
+
+  /* ─── 5 · COPPER BARS ─────────────────────── */
+  for(const b of bars){
+    b.y += b.s * dt * 0.5;
+    if(b.y > 1.05) b.y = -0.05;
+    if(b.y < -0.05) b.y = 1.05;
+    const yy = b.y * innerHeight;
+    const h = 26;
+    const g = ctx.createLinearGradient(0, yy - h/2, 0, yy + h/2);
+    const n = b.colors.length - 1;
+    b.colors.forEach((c,i) => g.addColorStop(i/n, c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, yy - h/2, innerWidth, h);
+  }
+
+  /* ─── 6 · SCROLLER ────────────────────────── */
+  const size = Math.max(22, Math.min(40, innerWidth / 32));
+  ctx.font = `bold ${size}px Consolas`;
+  ctx.textBaseline = 'middle';
+  const cw = ctx.measureText('M').width;
+  const baseY = innerHeight - 40;
+  for(let i=0;i<TEXT.length;i++){
+    const x = innerWidth - scrollX + i*cw;
+    if(x < -cw || x > innerWidth + cw) continue;
+    const welle = Math.sin(x*0.015 + t*3.4) * 16;
+    const y = baseY + welle;
+    const hue = (i*11 + t*140) % 360;
+    const col = `hsl(${hue},100%,62%)`;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = col;
+    ctx.fillText(TEXT[i], x, y);
+    ctx.shadowBlur = 0;
+  }
+  scrollX += 2.6;
+  if(scrollX > TEXT.length * cw) scrollX = 0;
+
+  /* ─── 7 · TITEL · iki1uc ──────────────────── */
+  ctx.save();
+  ctx.translate(cx, innerHeight * 0.14);
+  const titleSize = Math.max(28, Math.min(60, innerWidth/22));
+  ctx.font = `bold ${titleSize}px Consolas`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const tText = 'iki1uc';
+  const gesamt = ctx.measureText(tText).width;
+  let tx = -gesamt/2;
+  for(let i=0;i<tText.length;i++){
+    const c = tText[i];
+    const w = ctx.measureText(c).width;
+    const hue = (i*50 + t*180) % 360;
+    const col = `hsl(${hue},100%,68%)`;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = col;
+    ctx.fillText(c, tx + w/2, Math.sin(t*2 + i*0.6)*3);
+    ctx.shadowBlur = 0;
+    tx += w;
+  }
+  ctx.restore();
+
+  /* ─── 8 · SCANLINES ───────────────────────── */
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  for(let y=scanOff; y<innerHeight; y+=3){
+    ctx.fillRect(0, y, innerWidth, 1);
+  }
+  scanOff = (scanOff + 0.6) % 3;
+
+  /* ─── 9 · VIGNETTE ────────────────────────── */
+  const vg = ctx.createRadialGradient(cx, cy, Math.min(innerWidth,innerHeight)*0.25,
+                                       cx, cy, Math.max(innerWidth,innerHeight)*0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,innerWidth,innerHeight);
+}
+requestAnimationFrame(loop);
+
+/* konsole */
+console.log('');
+console.log('  ╔══════════════════════════════════════╗');
+console.log('  ║   AMIGA · CRACKTRO · iki1uc 2026     ║');
+console.log('  ║   plasma · boing ball · scroller      ║');
+console.log('  ║   zwei vögel, wenn sie wollen         ║');
+console.log('  ╚══════════════════════════════════════╝');
+console.log('');
+})();
+</script>
+</body>
+</html>
