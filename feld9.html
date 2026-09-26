@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>feld9 · veteran · iki1uc</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#05070e;color:#8aa8a0;
+            font-family:'Consolas','Courier New',monospace;overflow:hidden}
+
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;gap:32px}
+
+  #brett{display:grid;grid-template-columns:repeat(9,52px);
+         grid-template-rows:repeat(9,52px);gap:0;
+         border:1px solid rgba(120,220,150,.15);
+         background:#02040a}
+
+  .feld{width:52px;height:52px;display:flex;align-items:center;
+        justify-content:center;font-size:20px;font-weight:bold;
+        cursor:pointer;transition:background .2s;position:relative;
+        border-right:1px solid rgba(120,220,150,.06);
+        border-bottom:1px solid rgba(120,220,150,.06)}
+
+  .feld.hell{background:#0a1220}
+  .feld.dunkel{background:#060b14}
+  .feld:hover{background:rgba(140,240,208,.08)}
+  .feld.gewählt{background:rgba(240,208,128,.20)}
+  .feld.ziel{background:rgba(140,240,208,.15)}
+
+  .figur{position:relative;z-index:2;pointer-events:none}
+  .figur.w{color:#8cf0d0;text-shadow:0 0 12px rgba(140,240,208,.5)}
+  .figur.b{color:#b388ff;text-shadow:0 0 12px rgba(179,136,255,.5)}
+
+  .kraft{position:absolute;bottom:1px;right:3px;font-size:8px;
+         opacity:.7;z-index:3;pointer-events:none;
+         letter-spacing:.05em}
+
+  #seite{display:flex;flex-direction:column;gap:12px;
+         font-size:11px;letter-spacing:.2em;min-width:220px}
+  #seite h2{font-size:12px;font-weight:400;letter-spacing:.4em;
+            color:#8cf0d0;margin-bottom:10px}
+  #seite .z{display:flex;justify-content:space-between;
+            border-bottom:1px dashed rgba(120,220,150,.08);
+            padding:6px 0}
+  #seite .z b{color:#f0d080;font-weight:400}
+  #log{font-size:9.5px;line-height:1.8;color:#3a5a4a;
+       max-height:280px;overflow:hidden}
+
+  #kopf{position:fixed;top:20px;left:50%;transform:translateX(-50%);
+        text-align:center;font-size:9px;letter-spacing:.5em;
+        color:#3a5a4a;z-index:10;pointer-events:none}
+  #kopf b{color:#8cf0d0;font-weight:400}
+
+  .ecke{position:fixed;width:14px;height:14px;z-index:998;
+        pointer-events:none;opacity:.28;border-color:#8cf0d0}
+  .ecke.ol{top:12px;left:12px;border-top:1px solid;border-left:1px solid}
+  .ecke.or{top:12px;right:12px;border-top:1px solid;border-right:1px solid}
+  .ecke.ul{bottom:12px;left:12px;border-bottom:1px solid;border-left:1px solid}
+  .ecke.ur{bottom:12px;right:12px;border-bottom:1px solid;border-right:1px solid}
+</style>
+</head>
+<body>
+
+<div id="kopf">FELD · 9×9 · <b>VETERAN</b> · +0,25% pro schlag</div>
+
+<div id="wrap">
+  <div id="brett"></div>
+  <div id="seite">
+    <h2>STAND</h2>
+    <div class="z"><span>züge</span><b id="zZug">0</b></div>
+    <div class="z"><span>schläge</span><b id="zSchlag">0</b></div>
+    <div class="z"><span>weiß · kraft</span><b id="zW">100</b></div>
+    <div class="z"><span>schwarz · kraft</span><b id="zB">100</b></div>
+    <div class="z"><span>veteran w</span><b id="zVW">0</b></div>
+    <div class="z"><span>veteran b</span><b id="zVB">0</b></div>
+    <h2 style="margin-top:20px">LOG</h2>
+    <div id="log"></div>
+  </div>
+</div>
+
+<div class="ecke ol"></div>
+<div class="ecke or"></div>
+<div class="ecke ul"></div>
+<div class="ecke ur"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   feld9 · 9×9 · veteran-mechanik
+   ═══════════════════════════════════════════════════════════
+   Jede figur hat kraft. Start: 100.
+   Schlag = +0,25% auf die eigene kraft.
+   Veteran ist, wer 4+ schläge hat (kraft steigt sichtbar).
+
+   Zug: figur wählen · ziel wählen.
+   Figur läuft wie ein Turm (gerade linien).
+   ═══════════════════════════════════════════════════════════ */
+
+const N = 9;
+const startKraft = 100;
+const veteranBonus = 0.0025;   // 0,25%
+
+let zug = 0;
+let schläge = 0;
+let gewählt = null;
+let amZug = 'w';   // weiß beginnt
+
+/* ─── BRETT ──────────────────────────────────────── */
+const brett = document.getElementById('brett');
+const felder = [];      // felder[y][x] = { figur, farbe, kraft, schläge }
+
+for(let y = 0; y < N; y++){
+  felder[y] = [];
+  for(let x = 0; x < N; x++){
+    const el = document.createElement('div');
+    el.className = 'feld ' + ((x + y) % 2 ? 'dunkel' : 'hell');
+    el.dataset.x = x;
+    el.dataset.y = y;
+    el.addEventListener('click', () => klick(x, y));
+    brett.appendChild(el);
+    felder[y][x] = { el, figur: null, farbe: null, kraft: 0, schläge: 0 };
+  }
+}
+
+/* ─── START-AUFSTELLUNG ──────────────────────────── */
+/* Weiß unten (y 7-8), Schwarz oben (y 0-1).
+   Turm T · Springer S · Läufer L · Dame D · König K
+   Reihen: 9 = T S L D K D L S T */
+
+function setze(x, y, figur, farbe){
+  const f = felder[y][x];
+  f.figur = figur;
+  f.farbe = farbe;
+  f.kraft = startKraft;
+  f.schläge = 0;
+  neuZeichnen(x, y);
+}
+
+// Schwarz
+setze(0,0,'T','b'); setze(1,0,'S','b'); setze(2,0,'L','b');
+setze(3,0,'D','b'); setze(4,0,'K','b'); setze(5,0,'D','b');
+setze(6,0,'L','b'); setze(7,0,'S','b'); setze(8,0,'T','b');
+for(let x = 0; x < N; x++) setze(x, 1, 'B', 'b');
+
+// Weiß
+setze(0,8,'T','w'); setze(1,8,'S','w'); setze(2,8,'L','w');
+setze(3,8,'D','w'); setze(4,8,'K','w'); setze(5,8,'D','w');
+setze(6,8,'L','w'); setze(7,8,'S','w'); setze(8,8,'T','w');
+for(let x = 0; x < N; x++) setze(x, 7, 'B', 'w');
+
+/* ─── ANZEIGE ────────────────────────────────────── */
+function neuZeichnen(x, y){
+  const f = felder[y][x];
+  f.el.innerHTML = '';
+
+  if(f.figur){
+    const fig = document.createElement('span');
+    fig.className = 'figur ' + f.farbe;
+    fig.textContent = f.figur;
+    f.el.appendChild(fig);
+
+    const kraft = document.createElement('span');
+    kraft.className = 'kraft';
+    kraft.textContent = f.kraft.toFixed(2);
+    if(f.farbe === 'w') kraft.style.color = 'rgba(140,240,208,.7)';
+    else kraft.style.color = 'rgba(179,136,255,.7)';
+    f.el.appendChild(kraft);
+  }
+}
+
+/* ─── KLICK ──────────────────────────────────────── */
+function klick(x, y){
+  const f = felder[y][x];
+
+  // noch nichts gewählt → eigene figur wählen
+  if(!gewählt){
+    if(f.figur && f.farbe === amZug){
+      gewählt = { x, y };
+      f.el.classList.add('gewählt');
+      zeigeZiele(x, y);
+    }
+    return;
+  }
+
+  // schon gewählt
+  const von = felder[gewählt.y][gewählt.x];
+
+  // eigene figur angeklickt → umwählen
+  if(f.figur && f.farbe === amZug){
+    von.el.classList.remove('gewählt');
+    zieleAus();
+    gewählt = { x, y };
+    f.el.classList.add('gewählt');
+    zeigeZiele(x, y);
+    return;
+  }
+
+  // zug ausführen (nur wenn erlaubt)
+  if(!istErlaubt(gewählt.x, gewählt.y, x, y)){
+    log('· zug nicht erlaubt');
+    return;
+  }
+
+  // schlag?
+  if(f.figur && f.farbe !== amZug){
+    // veteran-bonus
+    const alt = von.kraft;
+    von.kraft = von.kraft * (1 + veteranBonus);
+    von.schläge++;
+    schläge++;
+
+    log(`⚔ ${von.figur}(${von.farbe}) schlägt ${f.figur}(${f.farbe}) · ${alt.toFixed(2)} → ${von.kraft.toFixed(2)}`);
+
+    // geschlagene figur entfernen
+    f.figur = null;
+    f.farbe = null;
+    f.kraft = 0;
+    f.schläge = 0;
+  }
+
+  // bewegen
+  f.figur = von.figur;
+  f.farbe = von.farbe;
+  f.kraft = von.kraft;
+  f.schläge = von.schläge;
+
+  von.figur = null;
+  von.farbe = null;
+  von.kraft = 0;
+  von.schläge = 0;
+
+  neuZeichnen(gewählt.x, gewählt.y);
+  neuZeichnen(x, y);
+  von.el.classList.remove('gewählt');
+  zieleAus();
+  gewählt = null;
+
+  zug++;
+  amZug = amZug === 'w' ? 'b' : 'w';
+  aktualisiereAnzeige();
+}
+
+/* ─── TURM-LOGIK · gerade linien ─────────────────── */
+function istErlaubt(x1, y1, x2, y2){
+  if(x1 === x2 && y1 === y2) return false;
+  if(x1 !== x2 && y1 !== y2) return false;
+
+  const dx = Math.sign(x2 - x1);
+  const dy = Math.sign(y2 - y1);
+  let cx = x1 + dx, cy = y1 + dy;
+
+  while(cx !== x2 || cy !== y2){
+    if(felder[cy][cx].figur) return false;  // blockiert
+    cx += dx; cy += dy;
+  }
+  return true;
+}
+
+function zeigeZiele(x, y){
+  for(let ty = 0; ty < N; ty++){
+    for(let tx = 0; tx < N; tx++){
+      if(istErlaubt(x, y, tx, ty)){
+        const ziel = felder[ty][tx];
+        // nicht auf eigene figur
+        if(ziel.figur && ziel.farbe === amZug) continue;
+        ziel.el.classList.add('ziel');
+      }
+    }
+  }
+}
+
+function zieleAus(){
+  for(let y = 0; y < N; y++)
+    for(let x = 0; x < N; x++)
+      felder[y][x].el.classList.remove('ziel');
+}
+
+/* ─── ANZEIGE UPDATE ─────────────────────────────── */
+function aktualisiereAnzeige(){
+  document.getElementById('zZug').textContent = zug;
+  document.getElementById('zSchlag').textContent = schläge;
+
+  let wSum = 0, bSum = 0, wAnz = 0, bAnz = 0;
+  let wVet = 0, bVet = 0;
+
+  for(let y = 0; y < N; y++){
+    for(let x = 0; x < N; x++){
+      const f = felder[y][x];
+      if(!f.figur) continue;
+      if(f.farbe === 'w'){
+        wSum += f.kraft; wAnz++;
+        if(f.schläge >= 4) wVet++;
+      } else {
+        bSum += f.kraft; bAnz++;
+        if(f.schläge >= 4) bVet++;
+      }
+    }
+  }
+
+  document.getElementById('zW').textContent = wSum.toFixed(1);
+  document.getElementById('zB').textContent = bSum.toFixed(1);
+  document.getElementById('zVW').textContent = wVet;
+  document.getElementById('zVB').textContent = bVet;
+}
+
+/* ─── LOG ────────────────────────────────────────── */
+function log(msg){
+  const l = document.getElementById('log');
+  const s = document.createElement('div');
+  s.textContent = msg;
+  l.insertBefore(s, l.firstChild);
+  while(l.children.length > 14) l.removeChild(l.lastChild);
+}
+
+log('· feld9 bereit · weiß beginnt');
+log('· veteran ab 4 schlägen · +0,25% pro schlag');
+aktualisiereAnzeige();
+
+</script>
+</body>
+</html>
