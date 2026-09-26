@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pracht · eye.open · now · iki1uc</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#04070c;color:#8aa8a0;
+            font-family:'Consolas',monospace;overflow:hidden}
+  canvas{display:block;position:fixed;inset:0;z-index:1}
+
+  #mitte{position:fixed;inset:0;z-index:5;
+         display:flex;align-items:center;justify-content:center;
+         pointer-events:none}
+  #ring{position:relative;width:min(72vmin,560px);height:min(72vmin,560px)}
+
+  .station{position:absolute;transform:translate(-50%,-50%);
+           text-align:center;line-height:1.6;
+           font-size:10.5px;letter-spacing:.28em;
+           transition:all .6s ease}
+  .station .z{font-size:16px;display:block;margin-bottom:4px}
+  .station .n{color:#c8d8d0;font-weight:400}
+  .station .w{color:#3a5a4a;font-size:8.5px;letter-spacing:.2em;
+              display:block;margin-top:2px}
+  .station.gold{color:#f0d080}
+  .station.gold .n{color:#f0d080}
+  .station.mint{color:#8cf0d0}
+  .station.mint .n{color:#8cf0d0}
+  .station.violet{color:#b388ff}
+  .station.violet .n{color:#b388ff}
+
+  #kern{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+        text-align:center;z-index:6;pointer-events:none;
+        transition:opacity .5s}
+  #kern .z{font-size:44px;color:#8cf0d0;
+           text-shadow:0 0 40px rgba(140,240,208,.4);
+           animation:atem 4s ease-in-out infinite}
+  @keyframes atem{0%,100%{opacity:.6}50%{opacity:1}}
+  #kern .rith{margin-top:14px;font-size:9.5px;letter-spacing:.5em;
+              color:#3a5a4a;line-height:2}
+  #kern .rith .v{color:#f0d080;font-weight:bold}
+  #kern .rith .stufe{color:#8cf0d0}
+
+  #oben{position:fixed;top:22px;left:50%;transform:translateX(-50%);
+        text-align:center;z-index:6;pointer-events:none}
+  #oben .marke{font-size:9px;letter-spacing:.55em;color:#2a4a3a}
+  #oben h1{margin-top:8px;font-size:clamp(14px,2.2vw,20px);
+           font-weight:100;letter-spacing:.5em;
+           background:linear-gradient(135deg,#8cf0d0,#f0d080 55%,#b388ff);
+           -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+  #unten{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+         text-align:center;z-index:6;pointer-events:none;
+         font-size:9.5px;letter-spacing:.45em;color:#2a4a3a;line-height:2.2}
+  #unten .a{color:#8cf0d0}
+  #unten .b{color:#f0d080}
+  #unten .c{color:#b388ff}
+
+  #stufen{position:fixed;bottom:26px;right:24px;z-index:6;
+          pointer-events:none;text-align:right;
+          font-size:9px;letter-spacing:.35em;color:#2a4a3a;line-height:2.2}
+  #stufen .on{color:#8cf0d0}
+  #stufen .off{color:#1a2a22}
+
+  #augen{position:fixed;top:22px;right:24px;z-index:6;
+         pointer-events:none;font-size:9px;letter-spacing:.4em;
+         color:#3a5a4a;line-height:2;text-align:right}
+  #augen .offen{color:#8cf0d0;text-shadow:0 0 12px rgba(140,240,208,.5)}
+
+  .ecke{position:fixed;width:14px;height:14px;z-index:998;
+        pointer-events:none;opacity:.28;border-color:#8cf0d0}
+  .ecke.ol{top:12px;left:12px;border-top:1px solid;border-left:1px solid}
+  .ecke.or{top:12px;right:12px;border-top:1px solid;border-right:1px solid}
+  .ecke.ul{bottom:12px;left:12px;border-bottom:1px solid;border-left:1px solid}
+  .ecke.ur{bottom:12px;right:12px;border-bottom:1px solid;border-right:1px solid}
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="oben">
+  <div class="marke">iki1uc · kader · AMU.lett</div>
+  <h1>pracht · eigen</h1>
+</div>
+
+<div id="mitte">
+  <div id="ring"></div>
+</div>
+
+<div id="kern">
+  <div class="z">◉</div>
+  <div class="rith">
+    rith · <span class="v" id="rith">0</span>/4<br>
+    stufe · <span class="stufe" id="stufe">RAW</span>
+  </div>
+</div>
+
+<div id="augen">
+  eye.open · <span class="offen" id="eye">—</span><br>
+  now · <span id="now">—</span>
+</div>
+
+<div id="stufen">
+  <div id="s-RAW">RAW</div>
+  <div id="s-STRUCTURE">STRUCTURE</div>
+  <div id="s-VECTOR">VECTOR</div>
+  <div id="s-FUSION">FUSION</div>
+</div>
+
+<div id="unten">
+  <span class="a">lage</span> · <span class="b">axes</span> ·
+  <span class="c">orbit</span> · <span class="a">fusion</span> ·
+  <span class="b">ghost</span> · <span class="c">navigator</span> ·
+  <span class="a">pipeline</span>
+</div>
+
+<div class="ecke ol"></div><div class="ecke or"></div>
+<div class="ecke ul"></div><div class="ecke ur"></div>
+
+<script>
+(function(){
+'use strict';
+
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H, cx, cy;
+
+function resize(){
+  const dpr = Math.min(devicePixelRatio, 2);
+  W = cv.width  = innerWidth * dpr;
+  H = cv.height = innerHeight * dpr;
+  cv.style.width  = innerWidth + 'px';
+  cv.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  cx = innerWidth / 2;
+  cy = innerHeight / 2;
+}
+addEventListener('resize', resize);
+resize();
+
+/* ─── DIE SIEBEN · aus trigger-analyse ──────────── */
+const SIEBEN = [
+  { id:'lage',      z:'◈', klasse:'gold',   winkel: -90, radius:0.42 },
+  { id:'axes',      z:'◆', klasse:'mint',   winkel: -38, radius:0.42 },
+  { id:'orbit',     z:'✦', klasse:'violet', winkel:  14, radius:0.42 },
+  { id:'fusion',    z:'◉', klasse:'gold',   winkel:  66, radius:0.42 },
+  { id:'ghost',     z:'▣', klasse:'mint',   winkel: 118, radius:0.42 },
+  { id:'navigator', z:'△', klasse:'violet', winkel: 170, radius:0.42 },
+  { id:'pipeline',  z:'⬢', klasse:'gold',   winkel: 222, radius:0.42 },
+];
+
+/* ─── DOM für stationen bauen ───────────────────── */
+const ringEl = document.getElementById('ring');
+const stationEls = SIEBEN.map(s => {
+  const el = document.createElement('div');
+  el.className = 'station ' + s.klasse;
+  el.innerHTML = `<span class="z">${s.z}</span><span class="n">${s.id}</span>`;
+  el.dataset.id = s.id;
+  ringEl.appendChild(el);
+  return { el, s };
+});
+
+/* ─── RITH-ENGINE · die 4 stufen ────────────────── */
+const STUFEN = ['RAW', 'STRUCTURE', 'VECTOR', 'FUSION'];
+let rith = 0;
+let stufeIdx = 0;
+
+function setRith(n){
+  rith = Math.max(0, Math.min(4, n));
+  stufeIdx = rith;
+  document.getElementById('rith').textContent = rith;
+  document.getElementById('stufe').textContent = STUFEN[rith] || 'JENSEITS';
+  STUFEN.forEach(s => {
+    const el = document.getElementById('s-' + s);
+    if(el) el.className = STUFEN.indexOf(s) <= rith - 1 ? 'on' : 'off';
+  });
+}
+
+/* ─── ZEIT · now ────────────────────────────────── */
+function setNow(){
+  const j = new Date();
+  document.getElementById('now').textContent =
+    String(j.getHours()).padStart(2,'0') + ':' +
+    String(j.getMinutes()).padStart(2,'0');
+}
+setNow();
+setInterval(setNow, 30000);
+
+/* ─── EYE.OPEN ──────────────────────────────────── */
+document.getElementById('eye').textContent = 'offen';
+
+/* ─── ZEICHNEN ──────────────────────────────────── */
+let t = 0, last = performance.now();
+let puls = 0;
+
+function zeichne(now){
+  requestAnimationFrame(zeichne);
+  const dt = Math.min(0.05, (now - last)/1000);
+  last = now;
+  t += dt;
+
+  /* hintergrund */
+  ctx.fillStyle = 'rgba(4,7,12,0.18)';
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  const R = Math.min(innerWidth, innerHeight) * 0.30;
+
+  /* plasma-atem · sehr leise */
+  const phase = 0.5 + 0.5 * Math.sin(t * 0.4);
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R * 1.6);
+  grd.addColorStop(0, `rgba(140,240,208,${0.03 + phase * 0.04})`);
+  grd.addColorStop(0.6, `rgba(179,136,255,${0.02 + phase * 0.02})`);
+  grd.addColorStop(1, 'rgba(4,7,12,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+  /* ÄUSSERER RING · das feld */
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 1.35, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(140,240,208,0.05)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+
+  /* INNERER RING · die kette */
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(140,240,208,0.08)';
+  ctx.lineWidth = 0.7;
+  ctx.stroke();
+
+  /* DIE SIEBEN STATIONEN · verbunden */
+  const punkte = SIEBEN.map((s, i) => {
+    const a = (s.winkel * Math.PI) / 180 + t * 0.02;
+    const r = R * (1 + Math.sin(t * 0.6 + i * 0.9) * 0.015);
+    return {
+      x: cx + Math.cos(a) * r,
+      y: cy + Math.sin(a) * r,
+      s,
+      i,
+    };
+  });
+
+  /* linien zwischen nachbarn · die kette */
+  ctx.lineWidth = 0.5;
+  for(let i = 0; i < punkte.length; i++){
+    const a = punkte[i];
+    const b = punkte[(i + 1) % punkte.length];
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = 'rgba(140,240,208,0.06)';
+    ctx.stroke();
+
+    /* eine kleine Markierung, die entlang läuft */
+    const ph = (t * 0.4 + i / punkte.length) % 1;
+    const mx = a.x + (b.x - a.x) * ph;
+    const my = a.y + (b.y - a.y) * ph;
+    ctx.beginPath();
+    ctx.arc(mx, my, 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(240,208,128,0.5)';
+    ctx.fill();
+  }
+
+  /* punkte der sieben */
+  punkte.forEach(p => {
+    const aktiv = Math.sin(t * 1.6 + p.i * 1.1) > 0.4;
+    const size = aktiv ? 3.5 : 2.2;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fillStyle = aktiv
+      ? 'rgba(240,208,128,0.85)'
+      : 'rgba(140,240,208,0.45)';
+    ctx.fill();
+
+    /* label-position */
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const d = Math.sqrt(dx*dx + dy*dy) || 1;
+    const lx = p.x + (dx / d) * 44;
+    const ly = p.y + (dy / d) * 30;
+    p.el.style.left = lx + 'px';
+    p.el.style.top  = ly + 'px';
+  });
+
+  /* label-positionen setzen (relativ zum ring) */
+  const ringRect = ringEl.getBoundingClientRect();
+  stationEls.forEach((se, i) => {
+    const p = punkte[i];
+    const a = (p.s.winkel * Math.PI) / 180 + t * 0.02;
+    const Rl = R * 1.18;
+    const x = Math.cos(a) * Rl;
+    const y = Math.sin(a) * Rl;
+    se.el.style.left = (ringRect.width/2 + x) + 'px';
+    se.el.style.top  = (ringRect.height/2 + y) + 'px';
+  });
+
+  /* PULS · der BIOS-takt im kern */
+  if(Math.floor(t * 4) !== Math.floor((t - dt) * 4)){
+    puls = 1.0;
+  }
+  if(puls > 0){
+    puls -= dt * 3.5;
+    const k = Math.max(0, puls);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6 + (1 - k) * 40, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(240,208,128,${k * 0.5})`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+}
+
+/* ─── RITH HOCHZÄHLEN · alle 12s eine stufe ─────── */
+let richtung = 1;
+setInterval(() => {
+  setRith(rith + richtung);
+  if(rith >= 4) richtung = -1;
+  if(rith <= 1) richtung = 1;
+}, 12000);
+
+setRith(1);
+requestAnimationFrame(zeichne);
+
+console.log('');
+console.log('  pracht · eye.open · now · iki1uc');
+console.log('  ─────────────────────────────────');
+console.log('  sieben stationen · eine kette');
+console.log('  rith · 0..4 · RAW → STRUCTURE → VECTOR → FUSION');
+console.log('  ');
+})();
+</script>
+</body>
+</html>
