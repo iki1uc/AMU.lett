@@ -2,64 +2,257 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>evoMIND</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>evoMIND · AMIGA SCENE · iki1uc</title>
 <style>
-    body {
-        font-family: monospace;
-        background: #f5f5f5;
-        color: #222;
-        padding: 40px;
-        text-align: center;
-    }
-    suite {
-        display: block;
-        font-size: 32px;
-        margin-bottom: 20px;
-        font-weight: bold;
-    }
-    slide {
-        display: block;
-        font-size: 18px;
-        margin-bottom: 20px;
-        opacity: 0.7;
-    }
-    .puzzle {
-        font-size: 26px;
-        padding: 20px;
-        border: 2px dashed #444;
-        display: inline-block;
-        margin-top: 20px;
-    }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden}
+  canvas{display:block;position:fixed;inset:0;image-rendering:pixelated}
 </style>
 </head>
-
 <body>
-
-<suite>evoMIND</suite>
-<slide>dimension.flow()</slide>
-
-<div class="puzzle" data-piece="evoMIND">
-    ((( evoMIND dimension.flow() )))
-</div>
+<canvas id="cv"></canvas>
 
 <script>
-// Sichtbares Startsignal
-console.log("evoMIND geladen");
+(function(){
+  'use strict';
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  let W, H;
 
-// Engine‑Start (dein System)
-if (window.CUBE_MIND && window.MATRIX9x9) {
-    const start = window.CUBE_MIND.start();
-    console.log("CUBE_MIND:", start);
+  function resize(){
+    W = cv.width = innerWidth;
+    H = cv.height = innerHeight;
+  }
+  resize();
+  addEventListener('resize', resize);
 
-    // Sichtbare Ausgabe
-    const out = document.createElement("pre");
-    out.textContent = JSON.stringify(start, null, 2);
-    document.body.appendChild(out);
-} else {
-    console.warn("Engine nicht geladen");
-}
+  /* ═══════════════════════════════════════════════
+     PLASMA · low-res buffer · HAM-mode feeling
+     ═══════════════════════════════════════════════ */
+  const PW = 160, PH = 90;
+  const plasmaCv = document.createElement('canvas');
+  plasmaCv.width = PW;
+  plasmaCv.height = PH;
+  const pctx = plasmaCv.getContext('2d');
+  const pImg = pctx.createImageData(PW, PH);
+  const pData = pImg.data;
+
+  /* ═══════════════════════════════════════════════
+     STERNE · 3D starfield
+     ═══════════════════════════════════════════════ */
+  const STERN_ANZ = 320;
+  const sterne = [];
+  for(let i = 0; i < STERN_ANZ; i++){
+    sterne.push({
+      x: (Math.random() - 0.5) * 2,
+      y: (Math.random() - 0.5) * 2,
+      z: Math.random() * 1.9 + 0.1,
+      pz: 0,
+    });
+  }
+
+  /* ═══════════════════════════════════════════════
+     COPPER BARS · 3 balken · Amiga copper chip
+     ═══════════════════════════════════════════════ */
+  const balken = [
+    { y: 0.20, speed: 0.08, colors: [
+      'rgba(0,0,0,0)', '#ff6600', '#ffcc00', '#ffffff',
+      '#ffcc00', '#ff6600', 'rgba(0,0,0,0)'
+    ]},
+    { y: 0.50, speed: 0.13, colors: [
+      'rgba(0,0,0,0)', '#0066ff', '#00ccff', '#ffffff',
+      '#00ccff', '#0066ff', 'rgba(0,0,0,0)'
+    ]},
+    { y: 0.80, speed: 0.18, colors: [
+      'rgba(0,0,0,0)', '#cc00cc', '#ff66ff', '#ffffff',
+      '#ff66ff', '#cc00cc', 'rgba(0,0,0,0)'
+    ]},
+  ];
+
+  function zeichneBalken(b, H){
+    const h = 26;
+    const y = b.y * H;
+    const g = ctx.createLinearGradient(0, y - h/2, 0, y + h/2);
+    const n = b.colors.length - 1;
+    b.colors.forEach((c, i) => g.addColorStop(i / n, c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y - h/2, W, h);
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCROLLER · sine · greetings
+     ═══════════════════════════════════════════════ */
+  const text =
+    "   GREETINGS TO · KADER · NOAH · CALL.ME · AMU.LETT · SPRUNG · " +
+    "LIVE-BRIDGE · MEMORY · INBOOT · BANKA · RAWATOR · SLI.RAW · " +
+    "SEEU · ICYFIRE · HDF ······ iki1uc 2026 · 14 KÖRPER · 250MS TAKT · " +
+    "UPG VOR UPD VOR REV ······ ";
+
+  let scrollX = 0;
+
+  function zeichneScroller(t){
+    const size = Math.max(22, Math.min(38, W / 34));
+    ctx.font = `bold ${size}px 'Consolas', monospace`;
+    ctx.textBaseline = 'middle';
+    const charW = ctx.measureText('M').width;
+    const baseY = H - 60;
+
+    for(let i = 0; i < text.length; i++){
+      const cx = W - scrollX + i * charW;
+      if(cx < -charW || cx > W + charW) continue;
+
+      /* sine-welle pro buchstabe */
+      const welle = Math.sin((cx * 0.012) + t * 3.0) * 18;
+      const y = baseY + welle;
+
+      /* farb-cycle */
+      const hue = (i * 12 + t * 120) % 360;
+      const col = `hsl(${hue}, 100%, 60%)`;
+
+      /* schatten/glow */
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = col;
+      ctx.fillText(text[i], cx, y);
+      ctx.shadowBlur = 0;
+    }
+
+    scrollX += 2.2;
+    if(scrollX > text.length * charW) scrollX = 0;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LOGO · bouncing · color-cycling
+     ═══════════════════════════════════════════════ */
+  const logo = 'evoMIND';
+
+  function zeichneLogo(t){
+    const size = Math.max(48, Math.min(96, W / 14));
+    ctx.font = `bold ${size}px 'Consolas', monospace`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+
+    const cx = W / 2;
+    const cy = H / 2 - 20 + Math.sin(t * 1.8) * 22;
+
+    const gesamtW = ctx.measureText(logo).width;
+    const startX = cx - gesamtW / 2;
+    let x = startX;
+
+    ctx.textAlign = 'left';
+    for(let i = 0; i < logo.length; i++){
+      const c = logo[i];
+      const w = ctx.measureText(c).width;
+      const hue = (i * 40 + t * 200) % 360;
+      const col = `hsl(${hue}, 100%, 65%)`;
+
+      /* raster-glühen */
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = col;
+      ctx.fillText(c, x, cy);
+      ctx.shadowBlur = 0;
+
+      x += w;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     SCANLINES · CRT
+     ═══════════════════════════════════════════════ */
+  let scanlineOffset = 0;
+
+  function zeichneScanlines(){
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    for(let y = scanlineOffset; y < H; y += 4){
+      ctx.fillRect(0, y, W, 1);
+    }
+    scanlineOffset = (scanlineOffset + 0.5) % 4;
+  }
+
+  /* ═══════════════════════════════════════════════
+     HAUPTSCHLEIFE
+     ═══════════════════════════════════════════════ */
+  let t = 0;
+  let last = performance.now();
+
+  function loop(now){
+    requestAnimationFrame(loop);
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    t += dt;
+
+    /* 1 · plasma */
+    for(let y = 0; y < PH; y++){
+      for(let x = 0; x < PW; x++){
+        const v =
+          Math.sin(x * 0.05 + t * 0.8) +
+          Math.sin(y * 0.07 + t * 1.0) +
+          Math.sin((x + y) * 0.04 + t * 1.2) +
+          Math.sin(Math.sqrt(x*x + y*y) * 0.06 + t * 0.6);
+        const n = (v + 4) / 8;
+        const idx = (y * PW + x) * 4;
+        pData[idx]     = Math.floor(15 + n * 70);
+        pData[idx + 1] = Math.floor(15 + n * 90);
+        pData[idx + 2] = Math.floor(50 + n * 130);
+        pData[idx + 3] = 255;
+      }
+    }
+    pctx.putImageData(pImg, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(plasmaCv, 0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+
+    /* 2 · sterne */
+    const cx = W / 2, cy = H / 2;
+    const fov = Math.min(W, H) * 0.6;
+    for(const s of sterne){
+      s.pz = s.z;
+      s.z -= dt * 0.4;
+      if(s.z <= 0.05){
+        s.x = (Math.random() - 0.5) * 2;
+        s.y = (Math.random() - 0.5) * 2;
+        s.z = 1.9;
+        s.pz = s.z;
+      }
+      const sx = cx + (s.x / s.z) * fov;
+      const sy = cy + (s.y / s.z) * fov;
+      const px = cx + (s.x / s.pz) * fov;
+      const py = cy + (s.y / s.pz) * fov;
+      if(sx < 0 || sx > W || sy < 0 || sy > H) continue;
+
+      const größe = Math.max(0.5, (1.9 - s.z) * 1.2);
+      const alpha = Math.min(1, (1.9 - s.z) * 0.8);
+
+      ctx.strokeStyle = `rgba(180, 220, 255, ${alpha})`;
+      ctx.lineWidth = größe;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
+
+    /* 3 · logo */
+    zeichneLogo(t);
+
+    /* 4 · copper balken */
+    for(const b of balken){
+      b.y += b.speed * dt;
+      if(b.y > 1.15) b.y = -0.15;
+      zeichneBalken(b, H);
+    }
+
+    /* 5 · scroller */
+    zeichneScroller(t);
+
+    /* 6 · scanlines */
+    zeichneScanlines();
+  }
+
+  requestAnimationFrame(loop);
+
+})();
 </script>
-
 </body>
 </html>
