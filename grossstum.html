@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>großstum · 14 · physik · iki1uc</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#04070c;color:#8aa8a0;
+            font-family:'Consolas',monospace;overflow:hidden}
+  canvas{display:block;position:fixed;inset:0}
+  #kopf{position:fixed;top:24px;left:50%;transform:translateX(-50%);
+        text-align:center;z-index:6;pointer-events:none}
+  #kopf .marke{font-size:9px;letter-spacing:.55em;color:#2a4a3a;margin-bottom:8px}
+  #kopf h1{font-size:clamp(18px,3.4vw,32px);font-weight:100;
+           letter-spacing:.5em;color:#8cf0d0;
+           text-shadow:0 0 40px rgba(140,240,208,.2)}
+  #stand{position:fixed;bottom:24px;left:24px;font-size:9.5px;
+         letter-spacing:.3em;color:#3a5a4a;line-height:2;z-index:6;
+         pointer-events:none}
+  #stand .v{color:#8cf0d0}
+  #stand .g{color:#f0d080}
+  #fuss{position:fixed;bottom:24px;right:24px;font-size:9px;
+        letter-spacing:.35em;color:#1e3328;z-index:6}
+  #fuss b{color:#3a5a4a;font-weight:400}
+  .ecke{position:fixed;width:14px;height:14px;z-index:998;
+        pointer-events:none;opacity:.28;border-color:#8cf0d0}
+  .ecke.ol{top:12px;left:12px;border-top:1px solid;border-left:1px solid}
+  .ecke.or{top:12px;right:12px;border-top:1px solid;border-right:1px solid}
+  .ecke.ul{bottom:12px;left:12px;border-bottom:1px solid;border-left:1px solid}
+  .ecke.ur{bottom:12px;right:12px;border-bottom:1px solid;border-right:1px solid}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="kopf">
+  <div class="marke">iki1uc · kader · AMU.lett</div>
+  <h1>GROSSSTUM</h1>
+</div>
+<div id="stand">
+  <div>kern · <span class="v" id="sTakt">250ms</span></div>
+  <div>gravitation · <span class="v" id="sGrav">0.000</span></div>
+  <div>krümmung · <span class="v" id="sKruemm">0.000</span></div>
+  <div>körper · <span class="v">14</span></div>
+  <div>fps · <span class="g" id="sFps">—</span></div>
+</div>
+<div id="fuss"><b>iki1uc</b> · großstum · <span id="zeit">--:--</span></div>
+<div class="ecke ol"></div><div class="ecke or"></div>
+<div class="ecke ul"></div><div class="ecke ur"></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ═══════════════════════════════════════════════════════════
+   GROSSSTUM · 14 körper · echte gravitation · krümmung
+   ═══════════════════════════════════════════════════════════
+   Kein Text. Geometrie. Physik.
+   Die 14 Stationen als wirkliche Körper.
+   Jeder hat Masse. Jeder zieht. Jeder wird gezogen.
+   Der Kern pulsiert im BIOS-Takt (250ms).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── die 14 · aus serie.js ──────────────────────── */
+const SERIE = [
+  { n:1,  id:'kader',       m: 3.0, farbe:0x8cf0d0 },
+  { n:2,  id:'NOAH',        m: 2.8, farbe:0xf0d080 },
+  { n:3,  id:'call.ME',     m: 2.2, farbe:0xb388ff },
+  { n:4,  id:'AMU.lett',    m: 2.5, farbe:0x8cf0d0 },
+  { n:5,  id:'SPRUNG',      m: 2.0, farbe:0xf0d080 },
+  { n:6,  id:'LIVE-BRIDGE', m: 1.8, farbe:0x88ddff },
+  { n:7,  id:'MEmory',      m: 1.6, farbe:0xa0c8b8 },
+  { n:8,  id:'inBOOT',      m: 1.5, farbe:0x7ee0a0 },
+  { n:9,  id:'banka',       m: 1.4, farbe:0xf0d080 },
+  { n:10, id:'RAWATOR',     m: 1.3, farbe:0xb388ff },
+  { n:11, id:'SLI.raw',     m: 1.2, farbe:0x8cf0d0 },
+  { n:12, id:'seeu',        m: 1.1, farbe:0x88ddff },
+  { n:13, id:'icyFIRE',     m: 1.0, farbe:0xa0c8b8 },
+  { n:14, id:'HDF',         m: 0.9, farbe:0x7ee0a0 },
+];
+
+/* ─── setup ──────────────────────────────────────── */
+const cv = document.getElementById('cv');
+const renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04070c);
+scene.fog = new THREE.FogExp2(0x04070c, 0.035);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 4, 11);
+
+const controls = new OrbitControls(camera, cv);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.15;
+controls.minDistance = 4;
+controls.maxDistance = 30;
+
+/* ─── licht ──────────────────────────────────────── */
+scene.add(new THREE.AmbientLight(0x1a2a3a, 1.2));
+const dl = new THREE.DirectionalLight(0xaaccff, 1.4);
+dl.position.set(6, 10, 6);
+scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xf0d080, 0.5);
+dl2.position.set(-6, -4, -6);
+scene.add(dl2);
+
+/* ─── KERN · das BIOS ────────────────────────────── */
+const kernGeo = new THREE.IcosahedronGeometry(0.55, 2);
+const kernMat = new THREE.MeshStandardMaterial({
+  color: 0x8cf0d0, emissive: 0x8cf0d0, emissiveIntensity: 0.7,
+  wireframe: true, transparent: true, opacity: 0.9,
+});
+const kern = new THREE.Mesh(kernGeo, kernMat);
+scene.add(kern);
+
+/* der takt-ring · pulsiert alle 250ms */
+const taktGeo = new THREE.RingGeometry(0.8, 0.83, 64);
+const taktMat = new THREE.MeshBasicMaterial({
+  color: 0xf0d080, transparent: true, opacity: 0.6,
+  side: THREE.DoubleSide,
+});
+const taktRing = new THREE.Mesh(taktGeo, taktMat);
+taktRing.rotation.x = Math.PI / 2;
+scene.add(taktRing);
+
+/* ─── DIE 14 KÖRPER ──────────────────────────────── */
+const körper = [];
+SERIE.forEach((s, i) => {
+  const radius = 3.2 + (i % 4) * 0.9;
+  const a = (i / SERIE.length) * Math.PI * 2;
+  const y = ((i % 3) - 1) * 0.7;
+
+  const geo = new THREE.SphereGeometry(
+    0.15 + s.m * 0.08, 20, 20
+  );
+  const mat = new THREE.MeshStandardMaterial({
+    color: s.farbe, emissive: s.farbe,
+    emissiveIntensity: 0.5,
+    roughness: 0.4, metalness: 0.6,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(
+    Math.cos(a) * radius,
+    y,
+    Math.sin(a) * radius
+  );
+  scene.add(mesh);
+
+  körper.push({
+    mesh,
+    masse: s.m,
+    pos: mesh.position.clone(),
+    vel: new THREE.Vector3(
+      -Math.sin(a) * 0.008,
+      0,
+      Math.cos(a) * 0.008
+    ),
+    farbe: s.farbe,
+    n: s.n,
+    id: s.id,
+  });
+
+  /* eine dünne linie zum kern — die bindung */
+  const linieGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), mesh.position.clone()
+  ]);
+  const linieMat = new THREE.LineBasicMaterial({
+    color: s.farbe, transparent: true, opacity: 0.08,
+  });
+  const linie = new THREE.Line(linieGeo, linieMat);
+  scene.add(linie);
+  körper[körper.length-1].linie = linie;
+});
+
+/* ─── PHYSIK ─────────────────────────────────────── */
+/* Newton: F = G · m1 · m2 / r²
+   Kern hat eine feste masse.
+   Jeder körper zieht am kern und an allen anderen.
+   Das erzeugt krümmung: keine geraden bahnen mehr.
+*/
+const G = 0.35;
+const kernMasse = 6.0;
+
+function schritt(dt){
+  /* kern-anziehung + körper-anziehung */
+  for(const a of körper){
+    const acc = new THREE.Vector3(0,0,0);
+
+    /* zum kern */
+    const zumKern = new THREE.Vector3(0,0,0).sub(a.pos);
+    const r2 = Math.max(zumKern.lengthSq(), 0.5);
+    const r  = Math.sqrt(r2);
+    const Fk = G * kernMasse / r2;
+    acc.add(zumKern.normalize().multiplyScalar(Fk));
+
+    /* zu allen anderen */
+    for(const b of körper){
+      if(a === b) continue;
+      const d = b.pos.clone().sub(a.pos);
+      const d2 = Math.max(d.lengthSq(), 0.8);
+      const Fb = G * b.masse / d2 * 0.25;
+      acc.add(d.normalize().multiplyScalar(Fb));
+    }
+
+    a.vel.add(acc.multiplyScalar(dt));
+    a.vel.multiplyScalar(0.998);
+  }
+
+  /* positionen updaten */
+  for(const a of körper){
+    a.pos.add(a.vel.clone().multiplyScalar(dt));
+    a.mesh.position.copy(a.pos);
+
+    /* bindung-linie neu zeichnen */
+    const pts = a.linie.geometry.attributes.position;
+    pts.setXYZ(1, a.pos.x, a.pos.y, a.pos.z);
+    pts.needsUpdate = true;
+
+    /* leuchten mit abstand */
+    const d = a.pos.length();
+    a.mesh.material.emissiveIntensity = 0.25 + Math.min(0.6, 1 / d);
+  }
+}
+
+/* ─── BIOS-TAKT · 250ms ──────────────────────────── */
+const TAKT_MS = 250;
+let letzterTakt = 0;
+let taktPhase = 0;
+
+/* ─── FPS ─────────────────────────────────────────── */
+let frames = 0, letzteSekunde = performance.now();
+
+/* ─── LOOP ────────────────────────────────────────── */
+const clock = new THREE.Clock();
+let t = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, clock.getDelta());
+  t += dt;
+
+  /* physik · 2 substeps für stabilität */
+  schritt(dt * 0.5);
+  schritt(dt * 0.5);
+
+  /* kern atmet */
+  kern.rotation.y += 0.006;
+  kern.rotation.x += 0.003;
+  const atem = 1 + Math.sin(t * 2.2) * 0.08;
+  kern.scale.setScalar(atem);
+
+  /* BIOS-TAKT · alle 250ms ein puls */
+  const jetzt = performance.now();
+  if(jetzt - letzterTakt >= TAKT_MS){
+    letzterTakt = jetzt;
+    taktPhase = 1.0;
+  }
+  if(taktPhase > 0){
+    taktPhase -= dt * 3.0;
+    const k = Math.max(0, taktPhase);
+    taktRing.scale.setScalar(1 + (1 - k) * 6);
+    taktRing.material.opacity = k * 0.7;
+  } else {
+    taktRing.material.opacity = 0;
+  }
+
+  /* krümmung: durchschnitt der abweichung von gerader bahn */
+  let sumAbw = 0;
+  let sumF = 0;
+  for(const a of körper){
+    sumAbw += a.pos.length();
+    sumF += a.vel.length();
+  }
+  document.getElementById('sGrav').textContent =
+    (sumF / körper.length).toFixed(3);
+  document.getElementById('sKruemm').textContent =
+    (sumAbw / körper.length).toFixed(3);
+
+  /* fps */
+  frames++;
+  const jetztSek = performance.now();
+  if(jetztSek - letzteSekunde >= 1000){
+    document.getElementById('sFps').textContent = frames;
+    frames = 0;
+    letzteSekunde = jetztSek;
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* ─── resize ─────────────────────────────────────── */
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ─── zeit ───────────────────────────────────────── */
+setInterval(() => {
+  const j = new Date();
+  document.getElementById('zeit').textContent =
+    String(j.getHours()).padStart(2,'0') + ':' +
+    String(j.getMinutes()).padStart(2,'0');
+}, 30000);
+
+/* ─── start ──────────────────────────────────────── */
+animate();
+
+console.log('');
+console.log('  GROSSSTUM · 14 körper · iki1uc');
+console.log('  ─────────────────────────────────');
+console.log('  physik · gravitation · krümmung');
+console.log('  kern · BIOS · 250ms takt');
+console.log('  kein text · geometrie');
+console.log('');
+</script>
+</body>
+</html>
