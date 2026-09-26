@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🧊🔥 ICYFIRE · großstum · iki1uc</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#000;overflow:hidden;
+            font-family:'Consolas',monospace;color:#8aa8a0}
+  canvas{display:block;position:fixed;inset:0}
+
+  #titel{position:fixed;top:16px;left:50%;transform:translateX(-50%);
+         text-align:center;z-index:5;pointer-events:none}
+  #titel .marke{font-size:9px;letter-spacing:.5em;color:#3a5a4a}
+  #titel h1{font-size:clamp(20px,3.6vw,34px);font-weight:100;
+            letter-spacing:.5em;margin-top:6px;
+            background:linear-gradient(135deg,#00ccff,#ff4444,#ff66ff,#ffaa00);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            filter:drop-shadow(0 0 20px rgba(255,102,255,.25))}
+
+  #stand{position:fixed;top:16px;right:20px;z-index:5;pointer-events:none;
+         text-align:right;font-size:9px;letter-spacing:.3em;line-height:2}
+  #stand .e{color:#ff4444} #stand .p{color:#ffaa00}
+  #stand .n{color:#88ddbb} #stand .i{color:#00ccff}
+  #stand .v{font-weight:bold}
+
+  #log{position:fixed;top:16px;left:20px;z-index:5;pointer-events:none;
+       font-size:9px;letter-spacing:.2em;color:#2a4a3a;line-height:1.9;
+       max-width:280px}
+  #log .z{animation:in .5s ease}
+  @keyframes in{from{opacity:0}to{opacity:1}}
+
+  #fuss{position:fixed;bottom:52px;right:20px;z-index:5;pointer-events:none;
+        font-size:9px;letter-spacing:.35em;color:#1e3328}
+  #fuss b{color:#3a5a4a;font-weight:400}
+
+  .ecke{position:fixed;width:14px;height:14px;z-index:998;
+        pointer-events:none;opacity:.28;border-color:#8cf0d0}
+  .ecke.ol{top:12px;left:12px;border-top:1px solid;border-left:1px solid}
+  .ecke.or{top:12px;right:12px;border-top:1px solid;border-right:1px solid}
+  .ecke.ul{bottom:12px;left:12px;border-bottom:1px solid;border-left:1px solid}
+  .ecke.ur{bottom:12px;right:12px;border-bottom:1px solid;border-right:1px solid}
+
+  /* unsichtbarer cursor */
+  body{cursor:none}
+  #pointer{position:fixed;width:8px;height:8px;border-radius:50%;
+           background:#8cf0d0;box-shadow:0 0 12px #8cf0d0;
+           pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
+           mix-blend-mode:screen}
+</style>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="titel">
+  <div class="marke">iki1uc · kader · großstum</div>
+  <h1>ICYFIRE</h1>
+</div>
+
+<div id="log"></div>
+
+<div id="stand">
+  <div>⚡ elektron · <span class="e v" id="vE">0</span></div>
+  <div>☀ plutron · <span class="p v" id="vP">0</span></div>
+  <div>◇ neutron · <span class="n v" id="vN">0</span></div>
+  <div>❄ ice · <span class="i v" id="vI">C</span></div>
+  <div>takt · <span class="v" id="vT">250</span></div>
+  <div>krümmung · <span class="v" id="vK">0.000</span></div>
+</div>
+
+<div id="fuss"><b>iki1uc</b> · icyfire · <span id="zeit">--:--</span></div>
+
+<div class="ecke ol"></div><div class="ecke or"></div>
+<div class="ecke ul"></div><div class="ecke ur"></div>
+<div id="pointer"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══════════════════════════════════════════════════════
+   ICYFIRE · großstum · iki1uc
+   ═══════════════════════════════════════════════════════
+   Vier schichten:
+     plasma    · amiga untergrund
+     serie     · 14 stationen als ring
+     physik    · 4 ASS mit echter ladung
+     kern      · BIOS · 250ms takt
+   ═══════════════════════════════════════════════════════ */
+
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H, cx, cy;
+
+function resize(){
+  const dpr = Math.min(devicePixelRatio, 2);
+  W = cv.width  = innerWidth * dpr;
+  H = cv.height = innerHeight * dpr;
+  cv.style.width  = innerWidth + 'px';
+  cv.style.height = innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx = innerWidth / 2;
+  cy = innerHeight / 2;
+}
+addEventListener('resize', resize);
+resize();
+
+/* ─── PLASMA · low-res ─────────────────────────── */
+const PW = 140, PH = 80;
+const pCv = document.createElement('canvas');
+pCv.width = PW; pCv.height = PH;
+const pctx = pCv.getContext('2d');
+const pImg = pctx.createImageData(PW, PH);
+const pDat = pImg.data;
+
+/* ─── SERIE · 14 stationen ─────────────────────── */
+const SERIE = [
+  'kader','NOAH','call.ME','AMU.lett','SPRUNG','LIVE-BRIDGE',
+  'MEmory','inBOOT','banka','RAWATOR','SLI.raw','seeu','icyFIRE','HDF'
+];
+const SERIE_Z = ['◉','☰','☎','◈','✦','φ','▣','⚕','◎','❖','△','◎','❄','◆'];
+
+/* ─── DIE 4 ASS · mit ladung ───────────────────── */
+const ASS = [
+  { id:'elektron', z:'−',    farbe:[255,68,68],   q:-1, name:'ELEKTRON' },
+  { id:'plutron',  z:'+',    farbe:[255,170,0],   q:+1, name:'PLUTRON'  },
+  { id:'neutron',  z:'0000', farbe:[136,221,187], q: 0, name:'NEUTRON'  },
+  { id:'ice',      z:'C→F→E',farbe:[0,204,255],   q:+0.3,name:'ICE'    },
+];
+
+/* position · velocity · winkel */
+ASS.forEach((a, i) => {
+  const r = 110 + Math.random() * 40;
+  const w = (i / ASS.length) * Math.PI * 2;
+  a.x = Math.cos(w) * r;
+  a.y = Math.sin(w) * r;
+  a.vx = 0;
+  a.vy = 0;
+  a.trail = [];
+  a.puls = 0;
+  a.wert = 30 + Math.random() * 50;   // 0..100
+});
+
+/* ─── ICE stationen ───────────────────────────── */
+const ICE_STATION = ['C','F','E'];
+let iceIdx = 0;
+
+/* ─── BIOS takt ────────────────────────────────── */
+const TAKT_MS = 250;
+let letzterTakt = 0;
+let kernPuls = 0;
+
+/* ─── krümmung · messwert ──────────────────────── */
+let krümmung = 0;
+
+/* ─── scroller text ────────────────────────────── */
+const SCROLL =
+  '   GREETINGS · KADER · NOAH · CALL.ME · AMU.LETT · SPRUNG · ' +
+  'LIVE-BRIDGE · MEMORY · INBOOT · BANKA · RAWATOR · SLI.RAW · ' +
+  'SEEU · ICYFIRE · HDF ······· iki1uc 2026 · 14 KÖRPER · 250MS TAKT · ' +
+  'UPG VOR UPD VOR REV ······ ELEKTRON · PLUTRON · NEUTRON · ICE ······ ';
+
+let scrollX = 0;
+
+/* ─── copper bars ──────────────────────────────── */
+const BARS = [
+  { y: 0.18, s: 0.06, c: ['rgba(0,0,0,0)','#ff6600','#ffcc00','#ffffff','#ffcc00','#ff6600','rgba(0,0,0,0)'] },
+  { y: 0.50, s: 0.10, c: ['rgba(0,0,0,0)','#0066ff','#00ccff','#ffffff','#00ccff','#0066ff','rgba(0,0,0,0)'] },
+  { y: 0.82, s: 0.14, c: ['rgba(0,0,0,0)','#cc00cc','#ff66ff','#ffffff','#ff66ff','#cc00cc','rgba(0,0,0,0)'] },
+];
+
+/* ─── scanlines ────────────────────────────────── */
+let scanOff = 0;
+
+/* ─── LOG ──────────────────────────────────────── */
+const logEl = document.getElementById('log');
+const logBuch = [];
+function log(text){
+  logBuch.unshift(text);
+  if(logBuch.length > 6) logBuch.pop();
+  logEl.innerHTML = logBuch.map(t =>
+    `<div class="z">· ${t}</div>`
+  ).join('');
+}
+log('icyfire · großstum erwacht');
+log('14 stationen · 4 ass · ein kern');
+
+/* ─── Maus ─────────────────────────────────────── */
+const maus = { x: 0, y: 0, px: 0, py: 0 };
+addEventListener('mousemove', e => {
+  maus.x = e.clientX; maus.y = e.clientY;
+});
+const pointerEl = document.getElementById('pointer');
+
+/* ─── PHYSIK ───────────────────────────────────── */
+const K_KRAFT = 3800;   // anziehungskonstante
+const K_FEDER = 0.006;  // rückkehr zum mittelpunkt
+const DÄMPFUNG = 0.985;
+
+function physik(dt){
+  const mitte = Math.min(innerWidth, innerHeight) * 0.20;
+
+  ASS.forEach(a => {
+    let fx = 0, fy = 0;
+
+    /* 1 · anziehung / abstoßung zwischen ASS */
+    ASS.forEach(b => {
+      if(a === b) return;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const d2 = Math.max(dx*dx + dy*dy, 400);
+      const d  = Math.sqrt(d2);
+      const F  = (K_KRAFT * a.q * b.q) / d2;
+      fx += (dx / d) * F * dt;
+      fy += (dy / d) * F * dt;
+    });
+
+    /* 2 · feder zum mittelpunkt */
+    fx -= a.x * K_FEDER * 60 * dt;
+    fy -= a.y * K_FEDER * 60 * dt;
+
+    /* 3 · maus anziehung · sanft */
+    if(maus.x || maus.y){
+      const mx = maus.x - cx;
+      const my = maus.y - cy;
+      const dm2 = Math.max(mx*mx + my*my, 10000);
+      const dm  = Math.sqrt(dm2);
+      fx += (mx / dm) * 8 * dt;
+      fy += (my / dm) * 8 * dt;
+    }
+
+    /* 4 · krümmung: eigene geschwindigkeit erzeugt ablenkung */
+    const v = Math.sqrt(a.vx*a.vx + a.vy*a.vy);
+    const ablenk = v * 0.15 * dt;
+    const nx = -a.vy / (v || 1);
+    const ny =  a.vx / (v || 1);
+    fx += nx * ablenk * a.q;
+    fy += ny * ablenk * a.q;
+
+    a.vx = (a.vx + fx) * DÄMPFUNG;
+    a.vy = (a.vy + fy) * DÄMPFUNG;
+    a.x += a.vx;
+    a.y += a.vy;
+
+    /* rand halten */
+    const r = Math.sqrt(a.x*a.x + a.y*a.y);
+    const rmax = Math.min(W, H) * 0.42;
+    if(r > rmax){
+      const nx2 = a.x / r;
+      const ny2 = a.y / r;
+      a.x = nx2 * rmax;
+      a.y = ny2 * rmax;
+      a.vx *= -0.6;
+      a.vy *= -0.6;
+    }
+
+    /* spur */
+    a.trail.push({ x: a.x, y: a.y });
+    if(a.trail.length > 60) a.trail.shift();
+
+    /* wert pulsieren */
+    a.wert += (Math.random() - 0.5) * 4;
+    if(a.wert < 5) a.wert = 5;
+    if(a.wert > 100) a.wert = 100;
+
+    /* puls abbauen */
+    a.puls *= 0.94;
+  });
+
+  /* krümmung messen: durchschnittliche richtungsabweichung */
+  let sum = 0;
+  ASS.forEach(a => {
+    if(a.trail.length < 5) return;
+    const p1 = a.trail[a.trail.length - 1];
+    const p2 = a.trail[a.trail.length - 5];
+    const dx = p1.x - p2.x, dy = p1.y - p2.y;
+    sum += Math.atan2(dy, dx);
+  });
+  krümmung = Math.abs(sum / ASS.length);
+}
+
+/* ─── ZEICHNEN ─────────────────────────────────── */
+let t = 0;
+let last = performance.now();
+
+function zeichne(now){
+  requestAnimationFrame(zeichne);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  t += dt;
+
+  /* ─── 1 · PLASMA ──────────────────────────── */
+  for(let y = 0; y < PH; y++){
+    for(let x = 0; x < PW; x++){
+      const v =
+        Math.sin(x * 0.05 + t * 0.7) +
+        Math.sin(y * 0.07 + t * 0.9) +
+        Math.sin((x + y) * 0.04 + t * 1.1) +
+        Math.sin(Math.sqrt(x*x + y*y) * 0.06 + t * 0.5);
+      const n = (v + 4) / 8;
+      const i = (y * PW + x) * 4;
+      pDat[i]   = Math.floor(8 + n * 30);
+      pDat[i+1] = Math.floor(8 + n * 35);
+      pDat[i+2] = Math.floor(25 + n * 55);
+      pDat[i+3] = 255;
+    }
+  }
+  pctx.putImageData(pImg, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pCv, 0, 0, innerWidth, innerHeight);
+  ctx.imageSmoothingEnabled = true;
+
+  /* ─── 2 · SERIE RING ──────────────────────── */
+  const R1 = Math.min(innerWidth, innerHeight) * 0.38;
+  SERIE.forEach((name, i) => {
+    const a = (i / SERIE.length) * Math.PI * 2 - Math.PI / 2 + t * 0.03;
+    const x = cx + Math.cos(a) * R1;
+    const y = cy + Math.sin(a) * R1;
+
+    /* linie zum nachbarn */
+    const a2 = ((i + 1) / SERIE.length) * Math.PI * 2 - Math.PI / 2 + t * 0.03;
+    const x2 = cx + Math.cos(a2) * R1;
+    const y2 = cy + Math.sin(a2) * R1;
+    ctx.strokeStyle = 'rgba(140,240,208,0.06)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    /* punkt */
+    const puls = 0.5 + 0.5 * Math.sin(t * 1.6 + i * 0.5);
+    ctx.fillStyle = `rgba(140,240,208,${0.25 + puls * 0.35})`;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.8 + puls * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* zeichen */
+    ctx.font = '9px Consolas';
+    ctx.fillStyle = `rgba(140,240,208,${0.15 + puls * 0.2})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(SERIE_Z[i], x, y);
+  });
+
+  /* ─── 3 · PHYSIK ──────────────────────────── */
+  physik(dt);
+
+  /* ─── 4 · SPUREN ──────────────────────────── */
+  ASS.forEach(a => {
+    const [r,g,b] = a.farbe;
+    for(let i = 0; i < a.trail.length - 1; i++){
+      const p1 = a.trail[i], p2 = a.trail[i+1];
+      const alpha = (i / a.trail.length) * 0.28;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx + p1.x, cy + p1.y);
+      ctx.lineTo(cx + p2.x, cy + p2.y);
+      ctx.stroke();
+    }
+  });
+
+  /* ─── 5 · VERBINDUNGEN ────────────────────── */
+  ASS.forEach((a, i) => {
+    for(let j = i+1; j < ASS.length; j++){
+      const b = ASS[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      const alpha = Math.max(0, 1 - d / 500) * 0.35;
+
+      /* farbe: bei anziehung warm, bei abstoßung kalt */
+      const ziehtAn = (a.q * b.q) < 0;
+      const col = ziehtAn ? '255,180,80' : '80,200,255';
+
+      ctx.strokeStyle = `rgba(${col},${alpha})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(cx + a.x, cy + a.y);
+      ctx.lineTo(cx + b.x, cy + b.y);
+      ctx.stroke();
+
+      /* kleine markierung in der mitte */
+      if(alpha > 0.15){
+        const mx = cx + (a.x + b.x) / 2;
+        const my = cy + (a.y + b.y) / 2;
+        ctx.fillStyle = `rgba(${col},${alpha * 1.5})`;
+        ctx.beginPath();
+        ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  });
+
+  /* ─── 6 · DIE 4 ASS ───────────────────────── */
+  ASS.forEach(a => {
+    const [r,g,b] = a.farbe;
+    const size = 14 + (a.wert / 100) * 18;
+    const px = cx + a.x, py = cy + a.y;
+
+    /* äußerer glow */
+    const grd = ctx.createRadialGradient(px, py, 0, px, py, size * 2.2);
+    grd.addColorStop(0, `rgba(${r},${g},${b},0.30)`);
+    grd.addColorStop(0.5, `rgba(${r},${g},${b},0.08)`);
+    grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(px, py, size * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* körper */
+    ctx.fillStyle = `rgba(${r},${g},${b},0.75)`;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* ring */
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(px, py, size, 0, Math.PI * 2);
+    ctx.stroke();
+
+    /* zeichen */
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${size * 0.6}px Consolas`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(a.z, px, py + 1);
+
+    /* name */
+    ctx.font = '9px Consolas';
+    ctx.fillStyle = `rgba(${r},${g},${b},0.55)`;
+    ctx.fillText(a.name, px, py + size + 12);
+
+    /* wert */
+    ctx.font = '8px Consolas';
+    ctx.fillStyle = `rgba(${r},${g},${b},0.4)`;
+    ctx.fillText(Math.round(a.wert), px, py + size + 22);
+  });
+
+  /* ─── 7 · KERN · BIOS takt ────────────────── */
+  if(now - letzterTakt >= TAKT_MS){
+    letzterTakt = now;
+    kernPuls = 1.0;
+    /* jeder takt: ein zustand wechselt */
+    const idx = Math.floor(t * 2) % 4;
+    ASS[idx].wert = Math.min(100, ASS[idx].wert + 12);
+    ASS[idx].puls = 1;
+    iceIdx = (iceIdx + 1) % 3;
+  }
+
+  if(kernPuls > 0){
+    kernPuls -= dt * 3.5;
+    const k = Math.max(0, kernPuls);
+    const ringR = 30 + (1 - k) * 130;
+    ctx.strokeStyle = `rgba(240,208,128,${k * 0.6})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  /* kern selbst */
+  const coreR = 18 + kernPuls * 8;
+  const coreGrd = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2);
+  coreGrd.addColorStop(0, 'rgba(140,240,208,0.6)');
+  coreGrd.addColorStop(0.5, 'rgba(179,136,255,0.2)');
+  coreGrd.addColorStop(1, 'rgba(140,240,208,0)');
+  ctx.fillStyle = coreGrd;
+  ctx.beginPath();
+  ctx.arc(cx, cy, coreR * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#8cf0d0';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4 + kernPuls * 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  /* ─── 8 · COPPER BARS ─────────────────────── */
+  BARS.forEach(b => {
+    b.y += b.s * dt * 0.5;
+    if(b.y > 1.15) b.y = -0.15;
+    const h = 22;
+    const yy = b.y * innerHeight;
+    const g = ctx.createLinearGradient(0, yy - h/2, 0, yy + h/2);
+    const n = b.c.length - 1;
+    b.c.forEach((c, i) => g.addColorStop(i / n, c));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, yy - h/2, innerWidth, h);
+  });
+
+  /* ─── 9 · SCANLINES ───────────────────────── */
+  ctx.fillStyle = 'rgba(0,0,0,0.13)';
+  for(let y = scanOff; y < innerHeight; y += 4){
+    ctx.fillRect(0, y, innerWidth, 1);
+  }
+  scanOff = (scanOff + 0.6) % 4;
+
+  /* ─── 10 · SINE SCROLLER ──────────────────── */
+  const size = Math.max(20, Math.min(34, innerWidth / 40));
+  ctx.font = `bold ${size}px Consolas`;
+  ctx.textBaseline = 'middle';
+  const cw = ctx.measureText('M').width;
+  const baseY = innerHeight - 26;
+
+  for(let i = 0; i < SCROLL.length; i++){
+    const x = innerWidth - scrollX + i * cw;
+    if(x < -cw || x > innerWidth + cw) continue;
+    const welle = Math.sin((x * 0.014) + t * 3.2) * 16;
+    const y = baseY + welle;
+    const hue = (i * 12 + t * 130) % 360;
+    const col = `hsl(${hue},100%,62%)`;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = col;
+    ctx.fillText(SCROLL[i], x, y);
+    ctx.shadowBlur = 0;
+  }
+  scrollX += 2.4;
+  if(scrollX > SCROLL.length * cw) scrollX = 0;
+
+  /* ─── 11 · POINTER ────────────────────────── */
+  pointerEl.style.left = maus.x + 'px';
+  pointerEl.style.top  = maus.y + 'px';
+
+  /* ─── 12 · WERTE UPDATE ───────────────────── */
+  document.getElementById('vE').textContent = Math.round(ASS[0].wert);
+  document.getElementById('vP').textContent = Math.round(ASS[1].wert);
+  document.getElementById('vN').textContent = Math.round(ASS[2].wert);
+  document.getElementById('vI').textContent = ICE_STATION[iceIdx];
+  document.getElementById('vT').textContent = TAKT_MS;
+  document.getElementById('vK').textContent = krümmung.toFixed(3);
+
+  /* log bei starker interaktion */
+  if(Math.random() < 0.004){
+    const a = ASS[Math.floor(Math.random()*4)];
+    const b = ASS[Math.floor(Math.random()*4)];
+    if(a !== b){
+      const zieht = (a.q * b.q) < 0;
+      log(`${a.name} ${zieht ? '→' : '⊥'} ${b.name}`);
+    }
+  }
+}
+
+/* ─── ZEIT ─────────────────────────────────────── */
+setInterval(() => {
+  const j = new Date();
+  document.getElementById('zeit').textContent =
+    String(j.getHours()).padStart(2,'0') + ':' +
+    String(j.getMinutes()).padStart(2,'0');
+}, 30000);
+
+/* ─── TASTATUR · neu mischen ───────────────────── */
+addEventListener('keydown', e => {
+  if(e.key === 'r' || e.key === 'R'){
+    ASS.forEach((a, i) => {
+      const w = Math.random() * Math.PI * 2;
+      const r = 80 + Math.random() * 60;
+      a.x = Math.cos(w) * r;
+      a.y = Math.sin(w) * r;
+      a.vx = 0; a.vy = 0;
+      a.trail = [];
+    });
+    log('· neu gemischt');
+  }
+  if(e.key === ' '){
+    e.preventDefault();
+    ASS.forEach(a => a.puls = 1);
+    kernPuls = 1.0;
+  }
+});
+
+/* ─── START ───────────────────────────────────── */
+requestAnimationFrame(zeichne);
+
+console.log('');
+console.log('  ICYFIRE · großstum · iki1uc');
+console.log('  ─────────────────────────────────');
+console.log('  plasma · serie · physik · kern');
+console.log('  4 ASS mit echter ladung');
+console.log('  BIOS takt · 250ms');
+console.log('  r = neu mischen · space = puls');
+console.log('');
+
+})();
+</script>
+</body>
+</html>
