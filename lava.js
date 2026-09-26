@@ -1,16 +1,5 @@
-// Plasma
-const plasma = (x, y, t) => {
-  let v = Math.sin(x * 0.05 + t);
-  v += Math.sin(y * 0.07 + t * 1.3);
-  v += Math.sin((x + y) * 0.04 + t * 0.7);
-  v += Math.sin(Math.sqrt(x*x + y*y) * 0.06 + t * 1.1);
-  return v / 4;
-};
-
-// Copper bar - one horizontal bar with gradient
-function drawCopperBar(ctx, y, height, colors) {
-  const grad = ctx.createLinearGradient(0, y - height/2, 0, y + height/2);
-  colors.forEach((c, i) => grad.addColorStop(i / (colors.length-1), c));
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, y - height/2, ctx.canvas.width, height);
-}
+const copperBars = [
+  { y: 100, speed: 30, colors: ['rgba(255,102,0,0)', '#ff6600', '#ffcc00', '#ffffff', '#ffcc00', '#ff6600', 'rgba(255,102,0,0)'] },
+  { y: 300, speed: 45, colors: ['rgba(0,255,255,0)', '#00ccff', '#00ffff', '#ffffff', '#00ffff', '#00ccff', 'rgba(0,255,255,0)'] },
+  { y: 500, speed: 60, colors: ['rgba(255,0,204,0)', '#cc00cc', '#ff00ff', '#ffffff', '#ff00ff', '#cc00cc', 'rgba(255,0,204,0)'] },
+];
