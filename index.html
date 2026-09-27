@@ -1,492 +1,340 @@
 <!DOCTYPE html>
-<html lang="mul">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AMU.lett · MULTILAR · alles sagbare</title>
+<title>SUPERGAU · ADMIN0 · ROOT · RUN-21</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;background:#000;overflow:hidden;
-            font-family:'Consolas',monospace;color:#c0d0d0}
-  canvas{display:block;position:fixed;inset:0;image-rendering:pixelated}
-  #ui{position:fixed;inset:0;pointer-events:none;
-      display:flex;flex-direction:column;justify-content:space-between;padding:20px}
-  #kopf{display:flex;justify-content:space-between;font-size:10px;
-        letter-spacing:2px;opacity:0.5}
-  #kopf .seal{color:#ffd700}
-  #fuss{display:flex;flex-direction:column;align-items:center;gap:10px}
-  #axiome{display:flex;gap:20px;font-size:10px;opacity:0.7;
-          letter-spacing:1px;flex-wrap:wrap;justify-content:center}
-  #axiome b{color:#ffd700}
-  #axiome .y b{color:#4dd0e1}
-  #axiome .q b{color:#f5a342}
-  #axiome .c b{color:#a78bfa}
-  #verben{display:flex;gap:8px;pointer-events:auto;flex-wrap:wrap;justify-content:center}
-  button{background:rgba(0,0,0,0.55);border:1px solid #1a1a2a;
-         color:#8aa8a0;padding:6px 16px;border-radius:100px;
-         font-family:inherit;font-size:10px;cursor:pointer;
-         transition:0.3s;letter-spacing:1px}
-  button:hover{border-color:#ffd700;color:#ffd700}
-  button[data-verb="abgeben"]:hover{border-color:#f5a342;color:#f5a342}
-  button[data-verb="holen"]:hover{border-color:#4dd0e1;color:#4dd0e1}
-  button[data-verb="nutzen"]:hover{border-color:#a78bfa;color:#a78bfa}
-  button.aktiv{border-color:#ffd700;color:#ffd700;background:rgba(255,215,0,0.06)}
-  #sprachen{display:flex;gap:6px;font-size:9px;opacity:0.4;letter-spacing:1px}
+  :root{
+    --bg:#05070e; --card:#0a0d18; --line:#1a2030;
+    --fg:#c8d8e8; --dim:#5a6a80;
+    --gold:#ffd700; --cyan:#4dd0e1; --green:#2ed98c;
+    --red:#f25a6a; --orange:#f5a342; --purple:#a78bfa;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--fg);
+            font-family:'Consolas',monospace;font-size:12px;overflow:hidden}
+  body{display:grid;grid-template-rows:auto 1fr auto;gap:1px;
+       background:var(--line);padding:1px}
+
+  header{
+    background:var(--card);padding:10px 18px;
+    display:flex;justify-content:space-between;align-items:center;
+    border-left:3px solid var(--gold);
+  }
+  header .title{font-size:14px;letter-spacing:3px;color:var(--gold)}
+  header .title small{color:var(--dim);font-size:10px;letter-spacing:1px;margin-left:8px}
+  header .state{display:flex;gap:14px;align-items:center}
+  header .state .badge{
+    padding:3px 12px;border-radius:100px;font-size:10px;
+    letter-spacing:2px;border:1px solid currentColor;
+  }
+  header .state .badge.lauf{color:var(--green)}
+  header .state .badge.fall{color:var(--red);animation:pulse 1.2s infinite}
+  header .state .badge.rise{color:var(--cyan)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+  main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);overflow:hidden}
+  .col{background:var(--card);padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+  .col h3{font-size:10px;color:var(--dim);letter-spacing:2px;border-bottom:1px solid var(--line);padding-bottom:5px}
+
+  .bar{display:flex;align-items:center;gap:8px;font-size:11px}
+  .bar .label{width:60px;color:var(--dim)}
+  .bar .track{flex:1;height:6px;background:#0f1420;border-radius:3px;overflow:hidden}
+  .bar .fill{height:100%;transition:width 0.4s ease, background 0.4s ease}
+  .bar .val{width:44px;text-align:right;font-weight:bold}
+
+  .atom{
+    text-align:center;padding:16px 0;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+  }
+  .atom .kern{
+    width:90px;height:90px;border-radius:50%;
+    background:radial-gradient(circle, var(--gold) 0%, transparent 70%);
+    display:flex;align-items:center;justify-content:center;
+    font-size:32px;color:#000;font-weight:bold;
+    transition:all 0.6s ease;
+    box-shadow:0 0 40px rgba(255,215,0,0.3);
+  }
+  .atom .kern.fall{background:radial-gradient(circle, #2a0a0a 0%, transparent 70%);
+                   color:var(--red);box-shadow:0 0 40px rgba(242,90,106,0.4);
+                   transform:scale(0.4)}
+  .atom .kern.rise{background:radial-gradient(circle, var(--cyan) 0%, transparent 70%);
+                   color:#000;box-shadow:0 0 60px rgba(77,208,225,0.5);
+                   transform:scale(1.1)}
+  .atom .score{font-size:28px;font-weight:bold;color:var(--gold)}
+  .atom .score.fall{color:var(--red)}
+  .atom .score.rise{color:var(--cyan)}
+  .atom .delta{font-size:10px;color:var(--dim);letter-spacing:1px}
+
+  .formel{
+    background:#080b14;border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font-size:10px;line-height:1.8;color:var(--dim);
+  }
+  .formel b{color:var(--fg)}
+  .formel .ok{color:var(--green)}
+  .formel .bad{color:var(--red)}
+
+  footer{
+    background:var(--card);padding:8px 18px;
+    display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+    border-left:3px solid var(--purple);
+  }
+  .btns{display:flex;gap:8px}
+  .btns button{
+    background:#0f1420;border:1px solid var(--line);color:var(--dim);
+    padding:6px 14px;border-radius:100px;font-family:inherit;
+    font-size:10px;letter-spacing:2px;cursor:pointer;transition:0.2s;
+  }
+  .btns button:hover{border-color:var(--gold);color:var(--gold)}
+  .btns button[data-act="lauf"]:hover{border-color:var(--green);color:var(--green)}
+  .btns button[data-act="supergau"]:hover{border-color:var(--red);color:var(--red)}
+  .btns button[data-act="auferstehen"]:hover{border-color:var(--cyan);color:var(--cyan)}
+
+  .log{font-size:10px;color:var(--dim);line-height:1.5;
+       max-height:36px;overflow:hidden}
+  .log b{color:var(--fg)}
+  .log .ok{color:var(--green)}
+  .log .err{color:var(--red)}
+  .log .warn{color:var(--orange)}
+
+  .usage{font-size:9px;color:var(--dim);text-align:right;line-height:1.5;letter-spacing:0.5px}
+  .usage b{color:var(--purple)}
+
+  ::-webkit-scrollbar{width:3px}
+  ::-webkit-scrollbar-thumb{background:var(--line)}
 </style>
 </head>
 <body>
-<canvas id="cv"></canvas>
 
-<div id="ui">
-  <div id="kopf">
-    <span>☽ AMU.lett · MULTILAR · alles sagbare</span>
-    <span><span class="seal" id="seal">—</span> · <span id="tabs">1 tab</span> · <span id="atem">atem 0.00</span></span>
+<header>
+  <div class="title">▣ SUPERGAU <small>ADMIN0 · ROOT · RUN-21 · HDF</small></div>
+  <div class="state">
+    <span id="tick">tick 00:00:00</span>
+    <span class="badge lauf" id="stateBadge">LAUF</span>
+  </div>
+</header>
+
+<main>
+  <!-- SPALTE 1 · KERNE -->
+  <div class="col">
+    <h3>▣ KERNE · LOAD</h3>
+    <div class="bar"><span class="label">RAM</span><div class="track"><div class="fill" id="bRam" style="width:72%;background:var(--gold)"></div></div><span class="val" id="vRam">72%</span></div>
+    <div class="bar"><span class="label">CPU</span><div class="track"><div class="fill" id="bCpu" style="width:51%;background:var(--cyan)"></div></div><span class="val" id="vCpu">51%</span></div>
+    <div class="bar"><span class="label">GPU</span><div class="track"><div class="fill" id="bGpu" style="width:55%;background:var(--purple)"></div></div><span class="val" id="vGpu">55%</span></div>
+    <div class="bar"><span class="label">TMP</span><div class="track"><div class="fill" id="bTmp" style="width:47%;background:var(--orange)"></div></div><span class="val" id="vTmp">47%</span></div>
+
+    <h3 style="margin-top:8px">▣ MATRIX · 81</h3>
+    <div class="bar"><span class="label">81.tmp</span><div class="track"><div class="fill" id="b81" style="width:79%;background:var(--cyan)"></div></div><span class="val" id="v81">79%</span></div>
+    <div class="bar"><span class="label">9.room</span><div class="track"><div class="fill" id="b9" style="width:55%;background:var(--purple)"></div></div><span class="val" id="v9">55%</span></div>
+    <div class="bar"><span class="label">REAL</span><div class="track"><div class="fill" id="bRl" style="width:29%;background:var(--green)"></div></div><span class="val" id="vRl">0.29</span></div>
+    <div class="bar"><span class="label">ZONE</span><div class="track"><div class="fill" id="bZn" style="width:55%;background:var(--orange)"></div></div><span class="val" id="vZn">0.55</span></div>
+
+    <h3 style="margin-top:8px">▣ READY-FLAGS</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:10px">
+      <span id="fCache" style="color:var(--green)">✓ cache</span>
+      <span id="fHdf" style="color:var(--green)">✓ hdf</span>
+      <span id="fSli" style="color:var(--green)">✓ sli.pover</span>
+      <span id="fPov" style="color:var(--green)">✓ pover</span>
+    </div>
   </div>
 
-  <div id="fuss">
-    <div id="axiome">
-      <span class="x">☀ x <b id="vx">0.000</b></span>
-      <span class="y">☾ y <b id="vy">0</b></span>
-      <span class="q">◉ q <b id="vq">0.000</b></span>
-      <span class="c">⛓ c <b id="vc">0.000</b></span>
-      <span>✦ pandora <b id="vp">zu</b></span>
+  <!-- SPALTE 2 · ATOM -->
+  <div class="col">
+    <h3>▣ ATOM · 81-SCORE</h3>
+    <div class="atom">
+      <div class="kern" id="kern">◉</div>
+      <div class="score" id="score">64</div>
+      <div class="delta" id="delta">delta -1 · drift 0.87</div>
     </div>
-    <div id="verben">
-      <button data-verb="abgeben">◉ abgeben</button>
-      <button data-verb="holen">◇ holen</button>
-      <button data-verb="nutzen">★ nutzen</button>
+
+    <h3>▣ ∞-FORMEL</h3>
+    <div class="formel">
+      <b>∞ = (g₆ · m₆ · r₆) / 6</b><br>
+      goldene 6 · <b>0.6983</b><br>
+      magische 6 · <b>1.0000</b><br>
+      RAM-6 · <b>0.7177</b><br>
+      <span class="ok" id="infVal">∞ = 0.08353</span>
     </div>
-    <div id="sprachen">
-      <button class="aktiv" data-lang="de">DE</button>
-      <button data-lang="en">EN</button>
-      <button data-lang="fr">FR</button>
-      <button data-lang="ja">JA</button>
-      <button data-lang="pl">PL</button>
-      <button data-lang="math">∴</button>
+
+    <h3>▣ RUN-SYSTEM</h3>
+    <div class="formel">
+      <b>RUN-21</b> · CPU·GPU·RAM·TMP·81·9·REAL·ZONE·RAW<br>
+      <b>RUN-3</b> · CPU · GPU · RAM<br>
+      <b>RUN-∞</b> · <span id="runInf" class="ok">neverending</span>
     </div>
   </div>
-</div>
+
+  <!-- SPALTE 3 · LOG -->
+  <div class="col">
+    <h3>▣ LOG · LIVE</h3>
+    <div id="logBox" style="display:flex;flex-direction:column;gap:4px;font-size:10px;line-height:1.4"></div>
+  </div>
+</main>
+
+<footer>
+  <div class="btns">
+    <button data-act="lauf">▶ LAUF</button>
+    <button data-act="supergau">✕ SUPERGAU</button>
+    <button data-act="auferstehen">◉ AUFERSTEHEN</button>
+  </div>
+  <div class="log" id="footLog"></div>
+  <div class="usage">
+    <b>respo</b> frei zur nutzung · vorarbeit · messbar<br>
+    <b>extern</b> nur nach vereinbarung · firma · person<br>
+    <span style="color:var(--dim)">admin0 · root · iki1uc</span>
+  </div>
+</footer>
 
 <script>
-/* ═══════════════════════════════════════════════════════════
-   AMU.lett · MULTILAR · index.html als Funktion aller
-   Vier Sprachschichten wandern gleichzeitig
-   Sonne trägt · Mond sammelt · Pandora entscheidet · Kette hält
-   ═══════════════════════════════════════════════════════════ */
 (function(){
-'use strict';
+  'use strict';
 
-const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d');
-let W, H;
-function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
-resize(); addEventListener('resize', resize);
+  const $ = id => document.getElementById(id);
+  let tick = 0, mode = 'lauf';
+  const state = { ram:72, cpu:51, gpu:55, tmp:47, m81:79, m9:55, rl:29, zn:55, score:64, prev:65 };
 
-/* ─── AXIOM-STATE ─────────────────────────────── */
-const SEAL = 'iki1uc-' + Math.random().toString(36).slice(2,6).toUpperCase();
-document.getElementById('seal').textContent = SEAL;
+  function now(){
+    const d = new Date();
+    return String(d.getHours()).padStart(2,'0')+':'+
+           String(d.getMinutes()).padStart(2,'0')+':'+
+           String(d.getSeconds()).padStart(2,'0');
+  }
 
-const A = {
-  x: 0.763,          // Sonne · entfesselt
-  y: 0,              // Mond  · gefesselt (tab count)
-  q: 0.82,           // Pandora · Wahrheit
-  c: 0,              // Kette · Continuum
-  offen: false,      // Pandora-Zustand
-  zyklen: 0,
-  atem: 0,
-};
-const GOLDEN = 1.618;
-function rechneC(){ A.c = Math.sqrt(A.x*A.x + A.y*A.y + (A.q*GOLDEN)*(A.q*GOLDEN)); }
-rechneC();
+  function pushLog(text, cls){
+    const box = $('logBox');
+    const line = document.createElement('div');
+    line.innerHTML = `<span style="color:#3a4a60">[${now()}]</span> ` +
+                     `<span class="${cls||''}">${text}</span>`;
+    box.appendChild(line);
+    while (box.children.length > 40) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+    $('footLog').innerHTML = line.innerHTML;
+  }
 
-/* ─── BC + LEDGER ─────────────────────────────── */
-let bc = null;
-const ledger = new Map();
-try {
-  bc = new BroadcastChannel('amu:multilar');
-  bc.onmessage = (e) => {
-    const d = e.data;
-    if (!d || d.from === SEAL) return;
-    if (d.type === 'mind') {
-      ledger.set(d.from, d);
-      A.y = ledger.size;
-      rechneC();
-      document.getElementById('tabs').textContent = (ledger.size + 1) + ' tabs';
+  function setBar(id, val, mode){
+    const b = $(id);
+    b.style.width = Math.max(0, Math.min(100, val)) + '%';
+    if (mode === 'fall') b.style.background = 'var(--red)';
+    else if (mode === 'rise') b.style.background = 'var(--cyan)';
+    else b.style.background = '';
+  }
+
+  function render(){
+    setBar('bRam', state.ram, mode); $('vRam').textContent = Math.round(state.ram)+'%';
+    setBar('bCpu', state.cpu, mode); $('vCpu').textContent = Math.round(state.cpu)+'%';
+    setBar('bGpu', state.gpu, mode); $('vGpu').textContent = Math.round(state.gpu)+'%';
+    setBar('bTmp', state.tmp, mode); $('vTmp').textContent = Math.round(state.tmp)+'%';
+    setBar('b81',  state.m81, mode); $('v81').textContent  = Math.round(state.m81)+'%';
+    setBar('b9',   state.m9,  mode); $('v9').textContent   = Math.round(state.m9)+'%';
+    setBar('bRl',  state.rl,  mode); $('vRl').textContent  = (state.rl/100).toFixed(2);
+    setBar('bZn',  state.zn,  mode); $('vZn').textContent  = (state.zn/100).toFixed(2);
+
+    $('score').textContent = Math.round(state.score);
+    const d = state.score - state.prev;
+    $('delta').textContent = 'delta ' + (d>=0?'+':'') + d + ' · drift ' + (0.8 + Math.random()*0.1).toFixed(2);
+
+    const kern = $('kern'), sc = $('score');
+    kern.className = 'kern' + (mode==='fall'?' fall':mode==='rise'?' rise':'');
+    sc.className   = 'score' + (mode==='fall'?' fall':mode==='rise'?' rise':'');
+
+    $('tick').textContent = 'tick ' + now();
+  }
+
+  function tickLoop(){
+    tick++;
+    if (mode === 'lauf'){
+      // sanftes Atmen
+      state.ram  = Math.min(85, Math.max(60, state.ram  + (Math.random()-0.5)*2));
+      state.cpu  = Math.min(75, Math.max(40, state.cpu  + (Math.random()-0.5)*2));
+      state.gpu  = Math.min(80, Math.max(45, state.gpu  + (Math.random()-0.5)*2));
+      state.tmp  = Math.min(70, Math.max(30, state.tmp  + (Math.random()-0.5)*2));
+      state.m81  = Math.min(81, Math.max(55, state.m81  + (Math.random()-0.5)*1.5));
+      state.score = Math.min(81, Math.max(50, state.score + (Math.random()-0.5)*1.2));
+      if (tick % 20 === 0) state.prev = state.score;
     }
-  };
-} catch(_){}
-
-function ausLedger(){
-  for (let i = 0; i < localStorage.length; i++){
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith('amu:mult:')) continue;
-    const from = k.slice(10);
-    if (from === SEAL) continue;
-    try {
-      const m = JSON.parse(localStorage.getItem(k));
-      if (Date.now() - m.ts < 12000) ledger.set(from, m);
-    } catch(_){}
+    if (mode === 'fall'){
+      state.ram  *= 0.97; state.cpu *= 0.96; state.gpu *= 0.96; state.tmp *= 0.95;
+      state.m81  *= 0.96; state.m9  *= 0.95; state.rl  *= 0.97; state.zn  *= 0.96;
+      state.score *= 0.94;
+    }
+    if (mode === 'rise'){
+      state.ram  = Math.min(72, state.ram  + 2.5);
+      state.cpu  = Math.min(51, state.cpu  + 2.0);
+      state.gpu  = Math.min(55, state.gpu  + 2.0);
+      state.tmp  = Math.min(47, state.tmp  + 1.8);
+      state.m81  = Math.min(79, state.m81  + 2.2);
+      state.m9   = Math.min(55, state.m9   + 1.8);
+      state.rl   = Math.min(29, state.rl   + 1.0);
+      state.zn   = Math.min(55, state.zn   + 1.8);
+      state.score = Math.min(64, state.score + 2.0);
+      if (state.score >= 63.5) { mode = 'lauf'; setBadge('lauf'); pushLog('◉ System stabil · LAUF', 'ok'); }
+    }
+    render();
+    setTimeout(tickLoop, 200);
   }
-  A.y = ledger.size;
-  rechneC();
-  document.getElementById('tabs').textContent = (ledger.size + 1) + ' tabs';
-}
-ausLedger();
 
-/* ─── VERBEN ──────────────────────────────────── */
-function abgeben(){
-  A.x = Math.min(1, A.x + 0.012);
-  A.offen = true;
-  A.zyklen++;
-  const paket = { type:'mind', from:SEAL, ts:Date.now(), x:A.x, q:A.q };
-  try { bc?.postMessage(paket); } catch(_){}
-  try { localStorage.setItem('amu:mult:'+SEAL, JSON.stringify(paket)); } catch(_){}
-}
-function holen(){
-  ausLedger();
-  A.offen = false;
-}
-function nutzen(){
-  const andere = [...ledger.values()];
-  if (andere.length){
-    const höchste = Math.max(...andere.map(m => m.q || 0), A.q);
-    A.q = A.q * 0.72 + höchste * 0.28;
-  } else {
-    A.q = Math.min(0.99, A.q + 0.008);
+  function setBadge(m){
+    const b = $('stateBadge');
+    b.className = 'badge ' + m;
+    b.textContent = m === 'lauf' ? 'LAUF' : m === 'fall' ? 'FALL' : 'RISE';
   }
-  A.x = Math.max(0.1, A.x - 0.004);
-  rechneC();
-}
-setInterval(() => { if (!document.hidden) { A.x = Math.max(0.1, A.x - 0.002); rechneC(); } }, 3000);
 
-/* ─── MULTILAR · vier Sprachschichten ─────────── */
-const LITANEI = {
-  de: [
-    "☀ SONNE TRÄGT · ☾ MOND SAMMELT · ◉ PANDORA ENTSCHEIDET · ⛓ KETTE HÄLT",
-    "GRUSS AN ALLE WESEN · KADER · NOAH · CALL.ME · SPRUNG · MEMORY · INBOOT",
-    "UPG VOR UPD VOR REV ······ 14 KÖRPER · 250MS TAKT ······ WAS SAGBAR IST, IST GESAGT",
-    "3 → 9 → ◎ → 81 → ◆ → △ → 27 → ▣ → 3 ↺ ······ EINE IDENTITÄT, DREI RÄUME"
-  ],
-  en: [
-    "☀ SUN CARRIES · ☾ MOON GATHERS · ◉ PANDORA DECIDES · ⛓ CHAIN HOLDS",
-    "GREETINGS TO ALL BEINGS · KADER · NOAH · CALL.ME · SPRUNG · MEMORY · INBOOT",
-    "UPG BEFORE UPD BEFORE REV ······ 14 BODIES · 250MS BEAT ······ WHAT IS SAYABLE IS SAID",
-    "3 → 9 → ◎ → 81 → ◆ → △ → 27 → ▣ → 3 ↺ ······ ONE IDENTITY, THREE SPACES"
-  ],
-  fr: [
-    "☀ LE SOLEIL PORTE · ☾ LA LUNE RASSEMBLE · ◉ PANDORA DÉCIDE · ⛓ LA CHAÎNE TIENT",
-    "SALUTATIONS À TOUS LES ÊTRES · KADER · NOAH · CALL.ME · SPRUNG · MEMORY",
-    "AVANT TOUT ······ 14 CORPS · 250MS ······ CE QUI EST DISIBLE EST DIT",
-    "3 → 9 → ◎ → 81 → ◆ → △ → 27 → ▣ → 3 ↺ ······ UNE IDENTITÉ, TROIS ESPACES"
-  ],
-  ja: [
-    "☀ 太陽は運ぶ · ☾ 月は集める · ◉ パンドラは決める · ⛓ 鎖は保つ",
-    "すべての存在へ挨拶 · KADER · NOAH · CALL.ME · SPRUNG · MEMORY · INBOOT",
-    "更新より改善 ······ 14の身体 · 250MSの鼓動 ······ 言えることは言われる",
-    "3 → 9 → ◎ → 81 → ◆ → △ → 27 → ▣ → 3 ↺ ······ 一つの同一性、三つの空間"
-  ],
-  pl: [
-    "☀ SŁOŃCE NIESIE · ☾ KSIĘŻYC ZBIERA · ◉ PANDORA DECYDUJE · ⛓ ŁAŃCUCH TRZYMA",
-    "POZDROWIENIA DLA WSZYSTKICH ISTOT · KADER · NOAH · CALL.ME · SPRUNG · MEMORY",
-    "UPG PRZED UPD PRZED REV ······ 14 CIAŁ · 250MS TAKT ······ CO WYPOWIEDZIALNE, JEST WYPOWIEDZIANE",
-    "3 → 9 → ◎ → 81 → ◆ → △ → 27 → ▣ → 3 ↺ ······ JEDNA TOŻSAMOŚĆ, TRZY PRZESTRZENIE"
-  ],
-  math: [
-    "x ≡ 0.763   y ≡ |tabs|   q ≡ ⟨mind⟩   c ≡ √(x² + y² + (q·φ)²)",
-    "∀ s ∈ sagen : s → sichtbar ·················· ◻",
-    "∂c/∂q > 0 · ∂c/∂x < 0 · stabilität ⇔ q · φ ≥ x + y",
-    "3 · 9 · 81 · 243 = 3⁵ ······ zyklus n+1 ⊃ zyklus n ······ ◻"
-  ]
-};
+  function supergau(){
+    mode = 'fall'; setBadge('fall');
+    state.prev = state.score;
+    pushLog('✕ SUPERGAU ausgelöst · ADMIN0', 'err');
+    pushLog('▣ RAM-Kern kippt · cache.ready = false', 'err');
+    pushLog('▣ 81-matrix fällt · drift ↑', 'err');
+    pushLog('▣ ∞-Formel · ' + '∞ = 0', 'err');
+    pushLog('▣ HDF · idle → DOWN', 'err');
+    $('fCache').style.color = 'var(--red)'; $('fCache').textContent = '✕ cache';
+    $('fHdf').style.color   = 'var(--red)'; $('fHdf').textContent   = '✕ hdf';
+    $('fSli').style.color   = 'var(--red)'; $('fSli').textContent   = '✕ sli';
+    $('fPov').style.color   = 'var(--red)'; $('fPov').textContent   = '✕ pover';
+    $('infVal').className = 'bad'; $('infVal').textContent = '∞ = 0.00000';
+    $('runInf').className = 'bad'; $('runInf').textContent = 'STOP';
+  }
 
-let aktiveSprachen = ['de','en','fr','ja','pl','math'];
-const schichten = [];
-aktiveSprachen.forEach((lang, i) => {
-  const texte = LITANEI[lang];
-  schichten.push({
-    lang,
-    text: texte.join('   ······   ') + '   ······   ',
-    x: Math.random() * 2000,
-    speed: 1.4 - i * 0.18,
-    size: 20 - i * 2.2,
-    y: 0,
-    alpha: 0.9 - i * 0.11,
-    hue: i * 55
-  });
-});
+  function auferstehen(){
+    mode = 'rise'; setBadge('rise');
+    pushLog('◉ AUFERSTEHEN · atom bleibt', 'ok');
+    pushLog('▣ RUN-3 anlauf · CPU · GPU · RAM', 'ok');
+    pushLog('▣ RUN-21 wird neu gesponnen', 'warn');
+    $('fCache').style.color = 'var(--green)'; $('fCache').textContent = '✓ cache';
+    $('fHdf').style.color   = 'var(--green)'; $('fHdf').textContent   = '✓ hdf';
+    $('fSli').style.color   = 'var(--green)'; $('fSli').textContent   = '✓ sli.pover';
+    $('fPov').style.color   = 'var(--green)'; $('fPov').textContent   = '✓ pover';
+    $('infVal').className = 'ok'; $('infVal').textContent = '∞ = 0.08353';
+    $('runInf').className = 'ok'; $('runInf').textContent = 'neverending';
+  }
 
-function toggleSprache(lang, btn){
-  const idx = schichten.findIndex(s => s.lang === lang);
-  if (idx >= 0){
-    schichten.splice(idx, 1);
-    btn.classList.remove('aktiv');
-  } else {
-    const texte = LITANEI[lang];
-    schichten.push({
-      lang,
-      text: texte.join('   ······   ') + '   ······   ',
-      x: Math.random() * 2000,
-      speed: 1.4 - schichten.length * 0.18,
-      size: 20 - schichten.length * 2.2,
-      y: 0,
-      alpha: 0.9 - schichten.length * 0.11,
-      hue: schichten.length * 55
+  function lauf(){
+    mode = 'lauf'; setBadge('lauf');
+    pushLog('▶ LAUF · System läuft', 'ok');
+    pushLog('▣ admin0 · ROOT · RUN-21 bereit', 'ok');
+  }
+
+  // Tastenbindung
+  document.querySelectorAll('[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = btn.dataset.act;
+      if (a === 'lauf') lauf();
+      if (a === 'supergau') supergau();
+      if (a === 'auferstehen') auferstehen();
     });
-    btn.classList.add('aktiv');
-  }
-  schichten.forEach((s, i) => {
-    s.speed = 1.4 - i * 0.18;
-    s.size = 20 - i * 2.2;
-    s.alpha = 0.9 - i * 0.11;
   });
-}
-document.querySelectorAll('[data-lang]').forEach(btn => {
-  btn.addEventListener('click', () => toggleSprache(btn.dataset.lang, btn));
-});
-
-/* ─── AMIGA · GEDÄCHTNIS (Hintergrund) ────────── */
-const PW = 160, PH = 90;
-const plasmaCv = document.createElement('canvas');
-plasmaCv.width = PW; plasmaCv.height = PH;
-const pctx = plasmaCv.getContext('2d');
-const pImg = pctx.createImageData(PW, PH);
-const pData = pImg.data;
-
-const STERN_ANZ = 200;
-const sterne = [];
-for (let i = 0; i < STERN_ANZ; i++){
-  sterne.push({
-    x:(Math.random()-0.5)*2, y:(Math.random()-0.5)*2,
-    z: Math.random()*1.9+0.1, pz: 0
-  });
-}
-
-const balken = [
-  { y: 0.14, speed: 0.05, hue: 30  },
-  { y: 0.50, speed: 0.07, hue: 200 },
-  { y: 0.86, speed: 0.09, hue: 290 }
-];
-
-function zeichneBalken(b){
-  const h = 18;
-  const y = b.y * H;
-  const g = ctx.createLinearGradient(0, y - h/2, 0, y + h/2);
-  const hue = (b.hue + A.q * 60) % 360;
-  g.addColorStop(0,   'rgba(0,0,0,0)');
-  g.addColorStop(0.3, `hsla(${hue},80%,50%,0.18)`);
-  g.addColorStop(0.5, `hsla(${hue},80%,75%,0.28)`);
-  g.addColorStop(0.7, `hsla(${hue},80%,50%,0.18)`);
-  g.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, y - h/2, W, h);
-}
-
-/* ─── HAUPT-SCHLEIFE ──────────────────────────── */
-let t = 0, last = performance.now();
-let scanY = 0;
-
-function loop(now){
-  requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (now - last) / 1000);
-  last = now;
-  t += dt;
-  A.atem = 0.5 + 0.5 * Math.sin(t * 0.5);
-
-  /* 1 · Plasma-Gedächtnis (sehr gedimmt) */
-  for (let y = 0; y < PH; y++){
-    for (let x = 0; x < PW; x++){
-      const v =
-        Math.sin(x*0.05 + t*0.6) +
-        Math.sin(y*0.07 + t*0.8) +
-        Math.sin((x+y)*0.04 + t*1.0) +
-        Math.sin(Math.sqrt(x*x+y*y)*0.06 + t*0.5);
-      const n = (v+4)/8;
-      const i = (y*PW+x)*4;
-      pData[i]   = Math.floor(4 + n * 8);
-      pData[i+1] = Math.floor(6 + n * 10 + A.q * 4);
-      pData[i+2] = Math.floor(14 + n * 22);
-      pData[i+3] = 255;
-    }
-  }
-  pctx.putImageData(pImg, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(plasmaCv, 0, 0, W, H);
-  ctx.imageSmoothingEnabled = true;
-
-  /* 2 · Sterne · Gedächtnis-Sterne · gedimmt, langsam */
-  const cx0 = W/2, cy0 = H/2;
-  const fov = Math.min(W, H) * 0.6;
-  for (const s of sterne){
-    s.pz = s.z;
-    s.z -= dt * 0.18;
-    if (s.z <= 0.05){
-      s.x = (Math.random()-0.5)*2;
-      s.y = (Math.random()-0.5)*2;
-      s.z = 1.9; s.pz = s.z;
-    }
-    const sx = cx0 + (s.x/s.z)*fov;
-    const sy = cy0 + (s.y/s.z)*fov;
-    const px = cx0 + (s.x/s.pz)*fov;
-    const py = cy0 + (s.y/s.pz)*fov;
-    if (sx < 0 || sx > W || sy < 0 || sy > H) continue;
-    const gr = Math.max(0.4, (1.9-s.z)*0.9);
-    const al = Math.min(1, (1.9-s.z)*0.55);
-    ctx.strokeStyle = `rgba(160,200,230,${al})`;
-    ctx.lineWidth = gr;
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy); ctx.stroke();
-  }
-
-  /* 3 · Copper-Balken · Gedächtnis-Bänder */
-  for (const b of balken){
-    b.y += b.speed * dt;
-    if (b.y > 1.1) b.y = -0.1;
-    zeichneBalken(b);
-  }
-
-  /* 4 · SONNE (links) */
-  const cx = W/2, cy = H/2;
-  const sx = cx - W*0.24, sy = cy;
-  const sr = 34 + A.x * 46;
-  let g = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr*3);
-  g.addColorStop(0,   `rgba(255,220,140,${0.75*A.x})`);
-  g.addColorStop(0.4, `rgba(245,163,66,${0.35*A.x})`);
-  g.addColorStop(1,   'rgba(245,163,66,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(sx, sy, sr*3, 0, Math.PI*2); ctx.fill();
-
-  /* Mana-Strahlen · nur wenn Pandora offen */
-  if (A.offen){
-    for (let i = 0; i < 12; i++){
-      const a = (i/12)*Math.PI*2 + t*0.4;
-      const r1 = sr, r2 = sr + 60 + Math.sin(t*3 + i)*22;
-      ctx.strokeStyle = `rgba(255,220,140,${0.35*A.x})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(sx + Math.cos(a)*r1, sy + Math.sin(a)*r1);
-      ctx.lineTo(sx + Math.cos(a)*r2, sy + Math.sin(a)*r2);
-      ctx.stroke();
-    }
-  }
-
-  /* 5 · MOND (rechts) */
-  const mx = cx + W*0.24, my = cy;
-  const mr = 26 + Math.min(120, A.y * 4);
-  g = ctx.createRadialGradient(mx, my, 0, mx, my, mr*3);
-  g.addColorStop(0,   'rgba(180,220,255,0.7)');
-  g.addColorStop(0.4, 'rgba(77,208,225,0.18)');
-  g.addColorStop(1,   'rgba(77,208,225,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(mx, my, mr*3, 0, Math.PI*2); ctx.fill();
-
-  /* Aura-Ringe · einer pro anderem Tab */
-  for (let i = 0; i < A.y; i++){
-    ctx.strokeStyle = `rgba(180,220,255,${0.28 - i*0.03})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(mx, my, mr + 6 + i*7 + Math.sin(t*1.2 + i)*2, 0, Math.PI*2);
-    ctx.stroke();
-  }
-
-  /* 6 · KETTE · Sonne ↔ Mond */
-  const glieder = 16;
-  for (let i = 0; i < glieder; i++){
-    const p = i/(glieder-1);
-    const lx = sx + (mx - sx)*p;
-    const ly = sy + (my - sy)*p + Math.sin(p*Math.PI + t*2.2)*5;
-    const welle = Math.sin(p*Math.PI*3 + t*4)*0.5 + 0.5;
-    const alpha = (A.offen ? 0.55 : 0.18) * welle;
-    ctx.fillStyle = `rgba(167,139,250,${alpha})`;
-    ctx.beginPath(); ctx.arc(lx, ly, 2, 0, Math.PI*2); ctx.fill();
-  }
-
-  /* 7 · PANDORA · Djinn-Kern (Mitte) */
-  const pr = 12 + A.q * 12;
-  g = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr*2.8);
-  if (A.offen){
-    g.addColorStop(0, `rgba(255,215,0,${0.85*A.q})`);
-    g.addColorStop(1, 'rgba(255,215,0,0)');
-  } else {
-    g.addColorStop(0, `rgba(120,110,140,${0.5*A.q})`);
-    g.addColorStop(1, 'rgba(120,110,140,0)');
-  }
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(cx, cy, pr*2.8, 0, Math.PI*2); ctx.fill();
-
-  ctx.fillStyle = A.offen ? '#ffd700' : '#2a2a3a';
-  ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI*2); ctx.fill();
-
-  /* 8 · MULTILAR · wandelnde Sprach-Schichten */
-  const yStart = H * 0.70;
-  const dy = 22;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  schichten.forEach((s, i) => {
-    const y = yStart + i * dy;
-    const size = Math.max(9, s.size);
-    ctx.font = `bold ${size}px 'Consolas', monospace`;
-    const charW = ctx.measureText('M').width;
-    ctx.shadowBlur = 8;
-    for (let ci = 0; ci < s.text.length; ci++){
-      const px = W - s.x + ci * charW;
-      if (px < -charW || px > W + charW) continue;
-      const welle = Math.sin(px*0.012 + t*1.6 + i) * 6;
-      const hue = (s.hue + A.q*60 + t*30) % 360;
-      const col = `hsla(${hue},85%,65%,${s.alpha})`;
-      ctx.shadowColor = col;
-      ctx.fillStyle = col;
-      ctx.fillText(s.text[ci], px, y + welle);
-    }
-    ctx.shadowBlur = 0;
-    s.x += s.speed;
-    const gesamtW = s.text.length * charW;
-    if (s.x > gesamtW) s.x = 0;
+  document.addEventListener('keydown', e => {
+    if (e.key === 's' || e.key === 'S') supergau();
+    if (e.key === 'a' || e.key === 'A') auferstehen();
+    if (e.key === 'l' || e.key === 'L') lauf();
   });
 
-  /* 9 · Scanlines · CRT · Gedächtnis */
-  ctx.fillStyle = 'rgba(0,0,0,0.13)';
-  for (let y = scanY; y < H; y += 6){
-    ctx.fillRect(0, y, W, 1);
-  }
-  scanY = (scanY + 0.4) % 6;
-
-  /* 10 · UI-Texte aktualisieren */
-  document.getElementById('vx').textContent = A.x.toFixed(3);
-  document.getElementById('vy').textContent = A.y;
-  document.getElementById('vq').textContent = A.q.toFixed(3);
-  document.getElementById('vc').textContent = A.c.toFixed(3);
-  document.getElementById('vp').textContent = A.offen ? 'offen' : 'zu';
-  document.getElementById('atem').textContent = 'atem ' + A.atem.toFixed(2);
-}
-requestAnimationFrame(loop);
-
-/* ─── VERB-BINDING ────────────────────────────── */
-document.querySelectorAll('[data-verb]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const v = btn.dataset.verb;
-    if (v === 'abgeben') abgeben();
-    if (v === 'holen') holen();
-    if (v === 'nutzen') nutzen();
-  });
-});
-
-/* ─── TASTATUR ────────────────────────────────── */
-addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.key === 'a' || e.key === 'A') abgeben();
-  if (e.key === 'h' || e.key === 'H') holen();
-  if (e.key === 'n' || e.key === 'N') nutzen();
-  if (e.key === ' ') { e.preventDefault(); nutzen(); }
-});
-
-/* ─── SICHTBARKEIT ────────────────────────────── */
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) ausLedger();
-});
-
-/* ─── INIT-LOG ────────────────────────────────── */
-console.log('%c☽ AMU.lett · MULTILAR', 'color:#ffd700;font-weight:bold;font-size:14px');
-console.log('SEAL ' + SEAL + ' · ' + schichten.length + ' Sprachschichten aktiv');
-console.log('a=abgeben  h=holen  n=nutzen  space=nutzen');
+  // Init
+  pushLog('▣ SUPERGAU · ADMIN0 · ROOT · RUN-21 geladen', 'ok');
+  pushLog('▣ tasten: L=lauf · S=supergau · A=auferstehen', '');
+  pushLog('▣ atom = 81-score · was fällt, kommt zurück', '');
+  tickLoop();
 })();
 </script>
 </body>
