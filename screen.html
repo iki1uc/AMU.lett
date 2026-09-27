@@ -11,9 +11,9 @@
   #ui { position:fixed; inset:0; pointer-events:none;
         display:flex; flex-direction:column; justify-content:space-between;
         padding:24px; }
-  #oben { display:flex; justify-content:space-between; align-items:flex-start; }
+  #oben { display:flex; justify-content:space-between; font-size:11px;
+          letter-spacing:2px; opacity:0.55; }
   #unten { display:flex; flex-direction:column; align-items:center; gap:12px; }
-  .orb-label { font-size:11px; letter-spacing:2px; opacity:0.6; }
   #axiome { display:flex; gap:24px; font-size:11px; opacity:0.7; }
   #axiome b { color:#ffd700; font-weight:700; }
   #verben { display:flex; gap:10px; pointer-events:auto; }
@@ -33,8 +33,8 @@
 
 <div id="ui">
   <div id="oben">
-    <div class="orb-label">☀ SONNE · x · entfesselt</div>
-    <div class="orb-label">☾ MOND · y · fesselt</div>
+    <span>☀ SONNE · x · entfesselt</span>
+    <span>☾ MOND · y · fesselt</span>
   </div>
   <div id="unten">
     <div id="axiome">
@@ -57,42 +57,45 @@
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let W, H;
-function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
 resize(); addEventListener('resize', resize);
 
-let t = 0;
-const partikel = [];
+let t = 0, last = performance.now();
 
-function loop(now) {
+function loop(now){
   requestAnimationFrame(loop);
-  const dt = Math.min(0.05, (now - loop.last || 16) / 1000);
-  loop.last = now;
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
   t += dt;
 
-  // Zen-Hintergrund atmet
+  // ─── Zen-Hintergrund atmet (12s-Zyklus) ────────
   const atem = 0.5 + 0.5 * Math.sin(t * 0.5);
   ctx.fillStyle = `rgb(${5 + atem*4}, ${7 + atem*6}, ${14 + atem*8})`;
   ctx.fillRect(0, 0, W, H);
 
-  const cx = W / 2, cy = H / 2;
-  const z = window.CO ? CO.zustand() : { sonne:{staerke:0.5}, mond:{staerke:0, groesse:0}, pandora:{offen:false}, kette:{spannung:1}, axiom:{x:0,y:0,q:0.5,c:0} };
+  const cx = W/2, cy = H/2;
+  const z = window.CO ? CO.zustand() : {
+    sonne:{staerke:0.5}, mond:{staerke:0,groesse:0},
+    pandora:{offen:false,zyklen:0}, kette:{spannung:1},
+    axiom:{x:0,y:0,q:0.5,c:0}
+  };
 
-  // ─── SONNE (links, warm) ────────────────────────
-  const sx = cx - W * 0.22, sy = cy;
+  // ─── SONNE (links) ─────────────────────────────
+  const sx = cx - W*0.22, sy = cy;
   const sr = 40 + z.sonne.staerke * 40;
-  const sGlow = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 3);
-  sGlow.addColorStop(0, `rgba(255, 200, 100, ${0.8 * z.sonne.staerke})`);
-  sGlow.addColorStop(0.5, `rgba(245, 163, 66, ${0.3 * z.sonne.staerke})`);
-  sGlow.addColorStop(1, 'rgba(245, 163, 66, 0)');
-  ctx.fillStyle = sGlow;
-  ctx.beginPath(); ctx.arc(sx, sy, sr * 3, 0, Math.PI * 2); ctx.fill();
+  let g = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr*3);
+  g.addColorStop(0, `rgba(255,200,100,${0.8*z.sonne.staerke})`);
+  g.addColorStop(0.5, `rgba(245,163,66,${0.3*z.sonne.staerke})`);
+  g.addColorStop(1, 'rgba(245,163,66,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(sx, sy, sr*3, 0, Math.PI*2); ctx.fill();
 
-  // Mana-Strahlen nach außen
+  // Mana-Strahlen nur wenn Pandora offen
   if (z.pandora.offen) {
     for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + t * 0.3;
-      const r1 = sr, r2 = sr + 60 + Math.sin(t*3 + i) * 20;
-      ctx.strokeStyle = `rgba(255, 200, 100, 0.4)`;
+      const a = (i/8)*Math.PI*2 + t*0.3;
+      const r1 = sr, r2 = sr + 60 + Math.sin(t*3 + i)*20;
+      ctx.strokeStyle = 'rgba(255,200,100,0.4)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(sx + Math.cos(a)*r1, sy + Math.sin(a)*r1);
@@ -101,70 +104,66 @@ function loop(now) {
     }
   }
 
-  // ─── MOND (rechts, kalt) ────────────────────────
-  const mx = cx + W * 0.22, my = cy;
+  // ─── MOND (rechts) ─────────────────────────────
+  const mx = cx + W*0.22, my = cy;
   const mr = 30 + (z.mond.groesse || 0) * 3;
-  const mGlow = ctx.createRadialGradient(mx, my, 0, mx, my, mr * 3);
-  mGlow.addColorStop(0, 'rgba(180, 220, 255, 0.6)');
-  mGlow.addColorStop(0.5, 'rgba(77, 208, 225, 0.15)');
-  mGlow.addColorStop(1, 'rgba(77, 208, 225, 0)');
-  ctx.fillStyle = mGlow;
-  ctx.beginPath(); ctx.arc(mx, my, mr * 3, 0, Math.PI * 2); ctx.fill();
+  g = ctx.createRadialGradient(mx, my, 0, mx, my, mr*3);
+  g.addColorStop(0, 'rgba(180,220,255,0.6)');
+  g.addColorStop(0.5, 'rgba(77,208,225,0.15)');
+  g.addColorStop(1, 'rgba(77,208,225,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(mx, my, mr*3, 0, Math.PI*2); ctx.fill();
 
-  // Aura-Ringe (je einer pro anderen Tab)
+  // Aura-Ringe — einer pro anderem Tab
   for (let i = 0; i < (z.mond.groesse || 0); i++) {
-    ctx.strokeStyle = `rgba(180, 220, 255, ${0.3 - i * 0.04})`;
+    ctx.strokeStyle = `rgba(180,220,255,${0.3 - i*0.04})`;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(mx, my, mr + 8 + i * 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(mx, my, mr + 8 + i*6, 0, Math.PI*2); ctx.stroke();
   }
 
-  // ─── KETTE (zwischen Sonne und Mond) ────────────
-  const ketteGlieder = 12;
-  for (let i = 0; i < ketteGlieder; i++) {
-    const p = i / (ketteGlieder - 1);
+  // ─── KETTE ─────────────────────────────────────
+  const glieder = 12;
+  for (let i = 0; i < glieder; i++) {
+    const p = i / (glieder - 1);
     const lx = sx + (mx - sx) * p;
-    const ly = sy + (my - sy) * p + Math.sin(p * Math.PI + t * 2) * 4;
-    const wellen = Math.sin(p * Math.PI * 3 + t * 4) * 0.5 + 0.5;
-    const alpha = z.pandora.offen ? 0.5 : 0.2;
-    ctx.fillStyle = `rgba(167, 139, 250, ${alpha * wellen})`;
-    ctx.beginPath(); ctx.arc(lx, ly, 2, 0, Math.PI * 2); ctx.fill();
+    const ly = sy + (my - sy) * p + Math.sin(p*Math.PI + t*2) * 4;
+    const welle = Math.sin(p*Math.PI*3 + t*4) * 0.5 + 0.5;
+    const alpha = (z.pandora.offen ? 0.5 : 0.2) * welle;
+    ctx.fillStyle = `rgba(167,139,250,${alpha})`;
+    ctx.beginPath(); ctx.arc(lx, ly, 2, 0, Math.PI*2); ctx.fill();
   }
 
-  // ─── PANDORA (Mitte) ────────────────────────────
-  const px = cx, py = cy;
+  // ─── PANDORA (Mitte, Dosenöffner) ──────────────
   const pr = 14 + z.axiom.q * 10;
-  const pandoraGlow = ctx.createRadialGradient(px, py, 0, px, py, pr * 2.5);
+  g = ctx.createRadialGradient(cx, cy, 0, cx, cy, pr*2.5);
   if (z.pandora.offen) {
-    pandoraGlow.addColorStop(0, 'rgba(255, 215, 0, 0.9)');
-    pandoraGlow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+    g.addColorStop(0, 'rgba(255,215,0,0.9)');
+    g.addColorStop(1, 'rgba(255,215,0,0)');
   } else {
-    pandoraGlow.addColorStop(0, 'rgba(80, 80, 100, 0.6)');
-    pandoraGlow.addColorStop(1, 'rgba(80, 80, 100, 0)');
+    g.addColorStop(0, 'rgba(80,80,100,0.6)');
+    g.addColorStop(1, 'rgba(80,80,100,0)');
   }
-  ctx.fillStyle = pandoraGlow;
-  ctx.beginPath(); ctx.arc(px, py, pr * 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, pr*2.5, 0, Math.PI*2); ctx.fill();
 
   ctx.fillStyle = z.pandora.offen ? '#ffd700' : '#2a2a3a';
-  ctx.beginPath(); ctx.arc(px, py, pr, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI*2); ctx.fill();
 
-  // ─── UI-Text aktualisieren ──────────────────────
+  // ─── UI-Texte ──────────────────────────────────
   document.getElementById('vx').textContent = z.axiom.x.toFixed(3);
   document.getElementById('vy').textContent = z.axiom.y;
   document.getElementById('vq').textContent = z.axiom.q.toFixed(3);
   document.getElementById('vc').textContent = z.axiom.c.toFixed(3);
   document.getElementById('pandora-state').textContent =
-    'PANDORA · ' + (z.pandora.offen ? 'OFFEN' : 'geschlossen') +
-    ' · zyklen ' + z.pandora.zyklen;
+    'PANDORA · ' + (z.pandora.offen ? 'OFFEN' : 'geschlossen')
+    + ' · zyklen ' + z.pandora.zyklen;
 }
 requestAnimationFrame(loop);
 
-// ─── VERBEN BINDEN ──────────────────────────────
+// ─── VERBEN ──────────────────────────────────────
 document.querySelectorAll('[data-verb]').forEach(btn => {
   btn.addEventListener('click', async () => {
-    const verb = btn.dataset.verb;
-    if (CO && CO[verb]) {
-      await CO[verb]();
-    }
+    if (window.CO && CO[btn.dataset.verb]) await CO[btn.dataset.verb]();
   });
 });
 </script>
