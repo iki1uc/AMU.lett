@@ -62,3 +62,9 @@ const AMU = {
 };
 
 AMU.init();
+<script src="./AMU.js"></script>   <!-- nur als Referenz -->
+<script src="./lett.js"></script>  <!-- aktiv -->
+<script>
+  // lett.js ist die Stimme. AMU.js ist das Ohr.
+  // index.html ist die Lichtung.
+</script>
